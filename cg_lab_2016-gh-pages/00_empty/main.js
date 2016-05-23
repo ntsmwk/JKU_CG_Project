@@ -11,6 +11,11 @@ const camera = {
   rotation: {
     x: 0,
     y: 0
+  },
+  position:{
+    x:0,
+    y:0,
+    z:0
   }
 };
 
@@ -32,12 +37,9 @@ function render(timeInMilliseconds) {
   const context = createSGContext(gl);
   context.projectionMatrix = mat4.perspective(mat4.create(), 30, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
   context.viewMatrix = mat4.lookAt(mat4.create(), [0,-1,-4], [0,0,0], [0,1,0]);
-  context.sceneMatrix = mat4.multiply(mat4.create(),
-                            glm.rotateY(camera.rotation.x),
-                            glm.rotateX(camera.rotation.y));
 
-  //rotateNode.matrix = glm.rotateY(timeInMilliseconds*-0.01);
-  //context.sceneMatrix = mat4.create();
+  context.sceneMatrix = glm.transform({translate: [camera.position.x,camera.position.y,camera.position.z], rotateX: camera.rotation.y, rotateY: camera.rotation.x})
+
 
   root.render(context);
 
@@ -159,6 +161,18 @@ function initInteraction(canvas) {
     if (event.code === 'KeyR') {
       camera.rotation.x = 0;
   		camera.rotation.y = 0;
+    }
+    if (event.code === 'KeyW') {
+      camera.position.z += -0.3;
+    }
+    if (event.code === 'KeyS') {
+      camera.position.z += 0.3;
+    }
+    if (event.code === 'KeyA') {
+      camera.position.x += 0.5;
+    }
+    if (event.code === 'KeyD') {
+      camera.position.x += -0.5;
     }
   });
 }
