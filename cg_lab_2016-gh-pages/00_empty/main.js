@@ -6,7 +6,7 @@ var canvasWidth = 800;
 var canvasHeight = 800;
 var aspectRatio = canvasWidth / canvasHeight;
 var quadVertexBuffer, quadColorBuffer;
-var rotateNode;
+var rotateNode, rotateLight;
 const camera = {
   rotation: {
     x: 0,
@@ -19,13 +19,36 @@ const camera = {
   }
 };
 
+let wall = new MaterialSGNode([
+  new RenderSGNode(makeRect())
+]);
+
+
+  let light = new LightSGNode();
+
+
 function init(resources) {
   gl = createContext(canvasWidth , canvasHeight);
   gl.enable(gl.DEPTH_TEST);
-//  shaderProgram = createProgram(gl, resources.vs, resources.fs);
   root = createSceneGraph(gl, resources);
   initInteraction(gl.canvas);
+  initWall();
+  initLight();
 
+}
+
+function initWall(){
+  wall.ambient = [0, 0, 0, 1];
+  wall.diffuse = [0.1, 0.1, 0.1, 1];
+  wall.specular = [0.5, 0.5, 0.5, 1];
+  wall.shininess = 0.4;
+}
+
+function initLight(){
+  light.ambient = [0.2, 0.2, 0.2, 1];
+  light.diffuse = [0.8, 0.8, 0.8, 1];
+  light.specular = [1, 1, 1, 1];
+  light.position = [0, 0, 0];
 }
 
 function render(timeInMilliseconds) {
@@ -36,68 +59,117 @@ function render(timeInMilliseconds) {
 
   const context = createSGContext(gl);
   context.projectionMatrix = mat4.perspective(mat4.create(), 30, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
-  context.viewMatrix = mat4.lookAt(mat4.create(), [0,-1,-4], [0,0,0], [0,1,0]);
-
+  context.viewMatrix = mat4.lookAt(mat4.create(), [0,0,-4], [0,0,0], [0,1,0]);
   context.sceneMatrix = glm.transform({translate: [camera.position.x,camera.position.y,camera.position.z], rotateX: camera.rotation.y, rotateY: camera.rotation.x})
 
-
+  //rotateLight.matrix = glm.rotateY(timeInMilliseconds*0.05);
   root.render(context);
 
   requestAnimationFrame(render);
 }
 
+function createLightSphere(resources) {
+    return new ShaderSGNode(createProgram(gl, resources.vs, resources.fs), [
+      new RenderSGNode(makeSphere(.2,10,10))
+    ]);
+  }
+
 function createSceneGraph(gl, resources) {
 
-  const root = new ShaderSGNode(createProgram(gl, resources.vs, resources.fs));
+  const root = new ShaderSGNode(createProgram(gl, resources.phong_vs, resources.phong_fs));
 
   rotateNode = new TransformationSGNode(mat4.create(), []);
   createRooms();
   createPathways();
   root.append(rotateNode);
+
+  rotateLight = new TransformationSGNode(mat4.create());
+  let translateLight = new TransformationSGNode(glm.translate(-1,0,1));
+
+  rotateLight.append(translateLight);
+  translateLight.append(light);
+  translateLight.append(createLightSphere(resources));
+  root.append(rotateLight);
+
   return root;
 }
 
 function createRooms(){
-  let floor = new RenderSGNode(makeRect());
-  createFirstRoom(rotateNode, new TransformationSGNode(glm.transform({translate: [-1.5,-1,0], scale: 0.8}),[]));
-  createSecondRoom(rotateNode, new TransformationSGNode(glm.transform({translate: [0.5,-1,0], scale: 0.8}),[]));
-  createThirdRoom(rotateNode, new TransformationSGNode(glm.transform({translate: [0.5,-1,-2], scale: 0.8}),[]));
+    createFirstRoom(rotateNode, new TransformationSGNode(glm.transform({translate: [-2-2/3,0,0], scale: 1}),[]));
+    createSecondRoom(rotateNode, new TransformationSGNode(glm.transform({translate: [0,0,0], scale: 1}),[]));
+    createThirdRoom(rotateNode, new TransformationSGNode(glm.transform({translate: [0,0,-2-2/3], scale: 1}),[]));
 }
 
 function createFirstRoom(node, firstRoomTransformationNode){
-  createRoom(firstRoomTransformationNode);
+  //front
+  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}),wall));
+  //back
+  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,1,2], rotateX: 0, scale:1}), wall));
+  //top
+  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), wall));
+  //bottom
+  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), wall));
+  //right
+  var rightWall =new TransformationSGNode(glm.transform({translate:[1,1,1], rotateY: 90, scale:1}), []);
+  addDoorSide(rightWall);
+  firstRoomTransformationNode.append(rightWall);
+  //left
+  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[-1,1,1], rotateY: 90, scale:1}), wall));
+
   node.append(firstRoomTransformationNode);
 }
 
 function createSecondRoom(node, secondRoomTranformationNode){
-  createRoom(secondRoomTranformationNode);
+  //front
+  var frontWall = new TransformationSGNode(glm.transform({translate: [0,1,0], rotateX: 0, scale: 1}), []);
+  frontWall = addDoorSide(frontWall);
+  secondRoomTranformationNode.append(frontWall);
+  //back
+  secondRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[0,1,2], rotateX: 0, scale:1}), wall));
+  //top
+  secondRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), wall));
+  //bottom
+  secondRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), wall));
+  //right
+  secondRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[1,1,1], rotateY: 90, scale:1}), wall));
+  //left
+  var leftWall =new TransformationSGNode(glm.transform({translate:[-1,1,1], rotateY: 90, scale:1}), []);
+  leftWall = addDoorSide(leftWall);
+  secondRoomTranformationNode.append(leftWall);
+
   node.append(secondRoomTranformationNode);
 }
 
 function createThirdRoom(node, thirdRoomTranformationNode){
-  createRoom(thirdRoomTranformationNode);
+  //front
+  thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}),wall));
+  //back
+  var backWall =new TransformationSGNode(glm.transform({translate:[0,1,2], rotateX: 0, scale:1}), []);
+  backWall = addDoorSide(backWall);
+  thirdRoomTranformationNode.append(backWall);
+
+  //top
+  thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), wall));
+  //bottom
+  thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), wall));
+  //right
+  thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[1,1,1], rotateY: 90, scale:1}), wall));
+  //left
+  thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[-1,1,1], rotateY: 90, scale:1}), wall));
   node.append(thirdRoomTranformationNode);
 }
 
-function createRoom(node){
-  let floor = new RenderSGNode(makeRect());
-  //front
-  node.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}),floor));
-  //back
-  node.append(new TransformationSGNode(glm.transform({translate:[0,1,2], rotateX: 0, scale:1}), floor));
-  //top
-  node.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), floor));
-  //bottom
-  node.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), floor));
-  //right
-  node.append(new TransformationSGNode(glm.transform({translate:[1,1,1], rotateY: 90, scale:1}), floor));
-  //left
-  node.append(new TransformationSGNode(glm.transform({translate:[-1,1,1], rotateY: 90, scale:1}), floor));
+
+function addDoorSide(side){
+  side.append(new TransformationSGNode(glm.transform({translate:[2/3,0,0], scale:[1/3,1,1/3]}), wall));
+  side.append(new TransformationSGNode(glm.transform({translate:[0,-1/2,0], scale:[1/3,1/2,1/3]}), wall));
+  side.append(new TransformationSGNode(glm.transform({translate:[-2/3,0,0], scale:[1/3,1,1/3]}), wall));
+  return side;
 }
 
 function createPathways(){
-  createFirstPathway(rotateNode,  new TransformationSGNode(glm.transform({translate: [-0.45,0,0.5], scale: [0.5,0.5,0.5]}),[]));
-  createSecondPathway(rotateNode,  new TransformationSGNode(glm.transform({translate:[0.25,0,-0.25],rotateY:90, scale: [0.5,0.5,0.5]}),[]));
+  createFirstPathway(rotateNode,  new TransformationSGNode(glm.transform({translate: [-1-1/3,1,2/3], scale: 1/3}),[]));
+  createSecondPathway(rotateNode,  new TransformationSGNode(glm.transform({translate:[-1/3,1,-1/3], rotateY:90, scale: 1/3}),[]));
 }
 
 function createFirstPathway(node, firstPathwayTransformationNode){
@@ -111,17 +183,15 @@ function createSecondPathway(node, secondPathwayTransformationNode){
 }
 
 function createPathway(node){
-  let floor = new RenderSGNode(makeRect());
   //front
-  node.append(new TransformationSGNode(glm.transform({ translate: [0,0.5,0], rotateX: 0, scale: [0.5,0.75,0.5]}),floor));
+  node.append(new TransformationSGNode(glm.transform({ translate: [0,1.5,0], rotateX: 0, scale: [1,1.5,1]}),wall));
   //back
-  node.append(new TransformationSGNode(glm.transform({translate:[0,0.5,1], rotateX: 0, scale:[0.5,0.75,0.5]}), floor));
+  node.append(new TransformationSGNode(glm.transform({translate:[0,1.5,2], rotateX: 0, scale:[1,1.5,1]}), wall));
   //top
-  node.append(new TransformationSGNode(glm.transform({translate:[0,-0.25,0.5], rotateX: 90, scale:[0.5,0.5,0.5]}), floor));
+  node.append(new TransformationSGNode(glm.transform({translate:[0,-0,1], rotateX: 90, scale:[1,1,1]}), wall));
   //bottom
-  node.append(new TransformationSGNode(glm.transform({translate:[0,1.25,0.5], rotateX: 90, scale:[0.5,0.5,0.5]}), floor));
+  node.append(new TransformationSGNode(glm.transform({translate:[0,3,1], rotateX: 90, scale:[1,1,1]}), wall));
   }
-
 
 function initInteraction(canvas) {
   const mouse = {
@@ -143,9 +213,7 @@ function initInteraction(canvas) {
   canvas.addEventListener('mousemove', function(event) {
     const pos = toPos(event);
     const delta = { x : mouse.pos.x - pos.x, y: mouse.pos.y - pos.y };
-    //TASK 0-1 add delta mouse to camera.rotation if the left mouse button is pressed
     if (mouse.leftButtonDown) {
-      //add the relative movement of the mouse to the rotation variables
   		camera.rotation.x += delta.x;
   		camera.rotation.y += delta.y;
     }
@@ -157,10 +225,12 @@ function initInteraction(canvas) {
   });
   //register globally
   document.addEventListener('keypress', function(event) {
-    //https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent
     if (event.code === 'KeyR') {
       camera.rotation.x = 0;
   		camera.rotation.y = 0;
+      camera.position.x = 0;
+      camera.position.y = 0;
+      camera.position.z = 0;
     }
     if (event.code === 'KeyW') {
       camera.position.z += -0.3;
@@ -169,10 +239,10 @@ function initInteraction(canvas) {
       camera.position.z += 0.3;
     }
     if (event.code === 'KeyA') {
-      camera.position.x += 0.5;
+      camera.position.x += 0.3;
     }
     if (event.code === 'KeyD') {
-      camera.position.x += -0.5;
+      camera.position.x += -0.3;
     }
   });
 }
@@ -180,7 +250,9 @@ function initInteraction(canvas) {
 
 loadResources({
   vs: 'shader/empty.vs.glsl',
-  fs: 'shader/empty.fs.glsl'
+  fs: 'shader/empty.fs.glsl',
+  phong_vs: 'shader/phong.vs.glsl',
+  phong_fs: 'shader/phong.fs.glsl'
 }).then(function (resources) {
   init(resources);
   render(0);
