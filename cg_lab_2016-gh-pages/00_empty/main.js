@@ -1,4 +1,3 @@
-//the OpenGL context
 var gl = null;
 var shaderProgram = null;
 var root = null;
@@ -19,12 +18,8 @@ const camera = {
   }
 };
 
-let wall = new MaterialSGNode([
-  new RenderSGNode(makeRect())
-]);
-
-
-  let light = new LightSGNode();
+let wall = new MaterialSGNode([new RenderSGNode(makeRect())]);
+let light = new LightSGNode();
 
 
 function init(resources) {
@@ -34,7 +29,6 @@ function init(resources) {
   initInteraction(gl.canvas);
   initWall();
   initLight();
-
 }
 
 function initWall(){
@@ -79,7 +73,7 @@ function createSceneGraph(gl, resources) {
   const root = new ShaderSGNode(createProgram(gl, resources.phong_vs, resources.phong_fs));
 
   rotateNode = new TransformationSGNode(mat4.create(), []);
-  createRooms();
+  createRooms(resources);
   createPathways();
   root.append(rotateNode);
 
@@ -90,19 +84,28 @@ function createSceneGraph(gl, resources) {
   translateLight.append(light);
   translateLight.append(createLightSphere(resources));
   root.append(rotateLight);
+  root.append(new TransformationSGNode(glm.transform({translate: [-3.1,1.522,0.3], rotateY:90, scale: 0.01}), new AdvancedTextureSGNode(resources.tableTexture,  new RenderSGNode(resources.table))));
 
   return root;
 }
 
-function createRooms(){
-    createFirstRoom(rotateNode, new TransformationSGNode(glm.transform({translate: [-2-2/3,0,0], scale: 1}),[]));
-    createSecondRoom(rotateNode, new TransformationSGNode(glm.transform({translate: [0,0,0], scale: 1}),[]));
-    createThirdRoom(rotateNode, new TransformationSGNode(glm.transform({translate: [0,0,-2-2/3], scale: 1}),[]));
+function createRooms(resources){
+  var firstRoomTextureNode = new AdvancedTextureSGNode(resources.tableTexture,[]);
+  rotateNode.append(new TransformationSGNode(glm.transform({translate: [-2-2/3,0,0], scale: 1}), firstRoomTextureNode));
+  createFirstRoom(firstRoomTextureNode);
+
+  var secondRoomTextureNode = new AdvancedTextureSGNode(resources.tileTexture,[]);
+  rotateNode.append(new TransformationSGNode(glm.transform({translate: [0,0,0], scale: 1}), secondRoomTextureNode));
+  createSecondRoom(secondRoomTextureNode);
+
+  var thirdRoomTextureNode = new AdvancedTextureSGNode(resources.tableTexture,[]);
+  rotateNode.append(new TransformationSGNode(glm.transform({translate: [0,0,-2-2/3], scale: 1}), thirdRoomTextureNode));
+  createThirdRoom(thirdRoomTextureNode);
 }
 
-function createFirstRoom(node, firstRoomTransformationNode){
+function createFirstRoom(firstRoomTransformationNode){
   //front
-  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}),wall));
+  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}), wall));
   //back
   firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,1,2], rotateX: 0, scale:1}), wall));
   //top
@@ -116,10 +119,9 @@ function createFirstRoom(node, firstRoomTransformationNode){
   //left
   firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[-1,1,1], rotateY: 90, scale:1}), wall));
 
-  node.append(firstRoomTransformationNode);
 }
 
-function createSecondRoom(node, secondRoomTranformationNode){
+function createSecondRoom(secondRoomTranformationNode){
   //front
   var frontWall = new TransformationSGNode(glm.transform({translate: [0,1,0], rotateX: 0, scale: 1}), []);
   frontWall = addDoorSide(frontWall);
@@ -137,17 +139,15 @@ function createSecondRoom(node, secondRoomTranformationNode){
   leftWall = addDoorSide(leftWall);
   secondRoomTranformationNode.append(leftWall);
 
-  node.append(secondRoomTranformationNode);
 }
 
-function createThirdRoom(node, thirdRoomTranformationNode){
+function createThirdRoom(thirdRoomTranformationNode){
   //front
   thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}),wall));
   //back
   var backWall =new TransformationSGNode(glm.transform({translate:[0,1,2], rotateX: 0, scale:1}), []);
   backWall = addDoorSide(backWall);
   thirdRoomTranformationNode.append(backWall);
-
   //top
   thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), wall));
   //bottom
@@ -156,7 +156,6 @@ function createThirdRoom(node, thirdRoomTranformationNode){
   thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[1,1,1], rotateY: 90, scale:1}), wall));
   //left
   thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[-1,1,1], rotateY: 90, scale:1}), wall));
-  node.append(thirdRoomTranformationNode);
 }
 
 
@@ -252,7 +251,10 @@ loadResources({
   vs: 'shader/empty.vs.glsl',
   fs: 'shader/empty.fs.glsl',
   phong_vs: 'shader/phong.vs.glsl',
-  phong_fs: 'shader/phong.fs.glsl'
+  phong_fs: 'shader/phong.fs.glsl',
+  table: 'models/table/Table.obj',
+  tableTexture: 'models/table/texture/Texture-1.jpg',
+  tileTexture: 'textures/bathroom/tiles/Tiles.jpg'
 }).then(function (resources) {
   init(resources);
   render(0);
