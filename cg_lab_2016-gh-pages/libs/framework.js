@@ -29,6 +29,10 @@ function loadResources(resources, callback) {
   function isObjUrl(url) {
     return /.*\.(obj)$/.test(url);
   }
+
+  function isMtlUrl(url){
+    return /.*\.(mtl)$/.test(url);
+  }
   return new Promise(function (resolve) {
     var result = {}, toLoad = Object.keys(resources);
 
@@ -72,7 +76,9 @@ function loadResources(resources, callback) {
         ajax(key, value, JSON.parse);
       } else if (isObjUrl(value)) {
         ajax(key, value, parseObjFile);
-      } else {
+      } else if (isMtlUrl(value)) {
+        ajax(key, value, parseMtlFile);
+      }else {
         ajax(key, value, String);
       }
     }
@@ -489,7 +495,7 @@ function parseMtlFile(fileContent) {
   var KA_RE = /^Ka\s/;
   var KD_RE = /^Kd\s/;
   var KS_RE = /^Ks\s/;
-  var KS_RE = /^Ke\s/;
+  var KE_RE = /^Ke\s/;
   var MAP_KD_RE = /^map_Kd\s/;
   var WHITESPACE_RE = /\s+/;
 
@@ -509,7 +515,7 @@ function parseMtlFile(fileContent) {
         shininess: 0.0,
         texture: null
       };
-      materials[elsm[0]] = material;
+      materials[elems[0]] = material;
     } else if (NS_RE.test(line)) {
       material.shininess = parseFloat(elems[0]);
     } else if (KA_RE.test(line)) {

@@ -6,6 +6,7 @@ var canvasHeight = 800;
 var aspectRatio = canvasWidth / canvasHeight;
 var quadVertexBuffer, quadColorBuffer;
 var rotateNode, rotateLight;
+
 const camera = {
   rotation: {
     x: 0,
@@ -20,7 +21,8 @@ const camera = {
 
 let wall = new MaterialSGNode([new RenderSGNode(makeRect())]);
 let light = new LightSGNode();
-
+var bedstead, bedMattress;
+var deskMaterial;
 
 function init(resources) {
   gl = createContext(canvasWidth , canvasHeight);
@@ -29,6 +31,9 @@ function init(resources) {
   initInteraction(gl.canvas);
   initWall();
   initLight();
+  initBedSteadMaterial(resources);
+  initBedMattressMaterial(resources);
+  initDeskMaterial(resources);
 }
 
 function initWall(){
@@ -45,6 +50,29 @@ function initLight(){
   light.position = [0, 0, 0];
 }
 
+function initBedSteadMaterial(resources){
+  bedstead.ambient = resources.bedMtl.bedstead.ambient;
+  bedstead.diffuse = resources.bedMtl.bedstead.diffuse;
+  bedstead.specular = resources.bedMtl.bedstead.specular;
+  bedstead.emission = resources.bedMtl.bedstead.emission;
+  bedstead.shininess = resources.bedMtl.bedstead.shininess;
+}
+function initBedMattressMaterial(resources){
+  bedMattress.ambient = resources.bedMtl.bedMattress.ambient;
+  bedMattress.diffuse = resources.bedMtl.bedMattress.diffuse;
+  bedMattress.specular = resources.bedMtl.bedMattress.specular;
+  bedMattress.emission = resources.bedMtl.bedMattress.emission;
+  bedMattress.shininess = resources.bedMtl.bedMattress.shininess;
+}
+
+function initDeskMaterial(resources){
+  deskMaterial.ambient = resources.tableMaterial.table.ambient;
+  deskMaterial.diffuse = resources.tableMaterial.table.diffuse;
+  deskMaterial.specular = resources.tableMaterial.table.specular;
+  deskMaterial.emission = resources.tableMaterial.table.emission;
+  deskMaterial.shininess = resources.tableMaterial.table.shininess;
+}
+
 function render(timeInMilliseconds) {
   checkForWindowResize(gl);
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
@@ -56,7 +84,7 @@ function render(timeInMilliseconds) {
   context.viewMatrix = mat4.lookAt(mat4.create(), [0,0,-4], [0,0,0], [0,1,0]);
   context.sceneMatrix = glm.transform({translate: [camera.position.x,camera.position.y,camera.position.z], rotateX: camera.rotation.y, rotateY: camera.rotation.x})
 
-  //rotateLight.matrix = glm.rotateY(timeInMilliseconds*0.05);
+  rotateLight.matrix = glm.rotateY(timeInMilliseconds*0.05);
   root.render(context);
 
   requestAnimationFrame(render);
@@ -70,7 +98,7 @@ function createLightSphere(resources) {
 
 function createSceneGraph(gl, resources) {
 
-  const root = new ShaderSGNode(createProgram(gl, resources.phong_vs, resources.phong_fs));
+  root = new ShaderSGNode(createProgram(gl, resources.phong_vs, resources.phong_fs));
 
   rotateNode = new TransformationSGNode(mat4.create(), []);
   createRooms(resources);
@@ -84,34 +112,62 @@ function createSceneGraph(gl, resources) {
   translateLight.append(light);
   translateLight.append(createLightSphere(resources));
   root.append(rotateLight);
-  root.append(new TransformationSGNode(glm.transform({translate: [-3.1,1.522,0.3], rotateY:90, scale: 0.01}), new AdvancedTextureSGNode(resources.tableTexture,  new RenderSGNode(resources.table))));
+  createDesk(resources);
+  createBed(resources);
 
   return root;
 }
 
+function createDesk(resources){
+
+  deskMaterial = new MaterialSGNode(new RenderSGNode(resources.table));
+  chairMaterial = new MaterialSGNode(new RenderSGNode(resources.chair));
+  root.append(new TransformationSGNode(glm.transform({translate: [-3.1,1.522,0.3], rotateY:90, scale: 0.01}), new AdvancedTextureSGNode(resources.tableTexture, deskMaterial)));
+  root.append(new TransformationSGNode(glm.transform({translate: [-2.9,1.65,0.7], rotateX: 180, rotateY: 0, scale: [0.04,0.03,0.03]}), new AdvancedTextureSGNode(resources.woodChairTexture, chairMaterial)));
+
+}
+
+function createBed(resources){
+  var bedTransformationNode = new TransformationSGNode(glm.transform({translate: [-2.95,1.75,1.67], scale: 0.003}));
+
+  bedstead = new MaterialSGNode(new RenderSGNode(resources.bedstead));
+  bedTransformationNode.append(new TransformationSGNode(glm.transform({translate: [0,0,0], rotateX: 180, rotateY: 90, scale: 1}),
+    new AdvancedTextureSGNode(resources.bedsteadTexture, bedstead)));
+
+  bedMattress = new MaterialSGNode(new RenderSGNode(resources.bedMattress));
+  bedTransformationNode.append(new TransformationSGNode(glm.transform({translate: [0,-0.5,0], rotateX: 180, rotateY: 90, scale: 1.001}),
+    new AdvancedTextureSGNode(resources.bedMatressTexture, bedMattress)));
+
+  root.append(bedTransformationNode);
+
+}
+
 function createRooms(resources){
   var firstRoomTextureNode = new AdvancedTextureSGNode(resources.tableTexture,[]);
-  rotateNode.append(new TransformationSGNode(glm.transform({translate: [-2-2/3,0,0], scale: 1}), firstRoomTextureNode));
-  createFirstRoom(firstRoomTextureNode);
+  var firstRoomFloorTextureNode = new AdvancedTextureSGNode(resources.woodFloorTexture,[]);
+  rotateNode.append(new TransformationSGNode(glm.transform({translate: [-2-2/3,0,0], scale: 1}), [firstRoomTextureNode, firstRoomFloorTextureNode]));
+  createFirstRoom(firstRoomTextureNode, firstRoomFloorTextureNode);
 
   var secondRoomTextureNode = new AdvancedTextureSGNode(resources.tileTexture,[]);
-  rotateNode.append(new TransformationSGNode(glm.transform({translate: [0,0,0], scale: 1}), secondRoomTextureNode));
-  createSecondRoom(secondRoomTextureNode);
+  var secondRoomFloorTextureNode = new AdvancedTextureSGNode(resources.tileFloorTexture,[]);
+  rotateNode.append(new TransformationSGNode(glm.transform({translate: [0,0,0], scale: 1}), [secondRoomTextureNode, secondRoomFloorTextureNode]));
+  createSecondRoom(secondRoomTextureNode, secondRoomFloorTextureNode);
 
   var thirdRoomTextureNode = new AdvancedTextureSGNode(resources.tableTexture,[]);
   rotateNode.append(new TransformationSGNode(glm.transform({translate: [0,0,-2-2/3], scale: 1}), thirdRoomTextureNode));
   createThirdRoom(thirdRoomTextureNode);
+
 }
 
-function createFirstRoom(firstRoomTransformationNode){
+function createFirstRoom(firstRoomTransformationNode, firstRoomFloorNode){
   //front
-  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}), wall));
+  //firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}), wall));
   //back
   firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,1,2], rotateX: 0, scale:1}), wall));
   //top
-  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), wall));
+  //firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), wall));
   //bottom
-  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), wall));
+  firstRoomFloorNode.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), wall));
   //right
   var rightWall =new TransformationSGNode(glm.transform({translate:[1,1,1], rotateY: 90, scale:1}), []);
   addDoorSide(rightWall);
@@ -121,7 +177,7 @@ function createFirstRoom(firstRoomTransformationNode){
 
 }
 
-function createSecondRoom(secondRoomTranformationNode){
+function createSecondRoom(secondRoomTranformationNode, secondRoomFloorTextureNode){
   //front
   var frontWall = new TransformationSGNode(glm.transform({translate: [0,1,0], rotateX: 0, scale: 1}), []);
   frontWall = addDoorSide(frontWall);
@@ -131,7 +187,7 @@ function createSecondRoom(secondRoomTranformationNode){
   //top
   secondRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), wall));
   //bottom
-  secondRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), wall));
+  secondRoomFloorTextureNode.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), wall));
   //right
   secondRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[1,1,1], rotateY: 90, scale:1}), wall));
   //left
@@ -246,15 +302,24 @@ function initInteraction(canvas) {
   });
 }
 
-
 loadResources({
   vs: 'shader/empty.vs.glsl',
   fs: 'shader/empty.fs.glsl',
   phong_vs: 'shader/phong.vs.glsl',
   phong_fs: 'shader/phong.fs.glsl',
   table: 'models/table/Table.obj',
+  tableMaterial: 'models/table/Table.mtl',
+  chair: 'models/chair/chair.obj',
   tableTexture: 'models/table/texture/Texture-1.jpg',
-  tileTexture: 'textures/bathroom/tiles/Tiles.jpg'
+  tileTexture: 'textures/bathroom/tiles/Tiles.jpg',
+  tileFloorTexture: 'textures/bathroom/tiles/Tiles_Floor.jpg',
+  woodChairTexture: 'textures/wood/WoodChair.jpg',
+  woodFloorTexture: 'textures/wood/WoodFloor.jpg',
+  bedstead: 'models/bed/bedstead.obj',
+  bedMattress: 'models/bed/bedMattress.obj',
+  bedMtl: 'models/bed/bed.mtl',
+  bedsteadTexture: 'models/bed/Texture/drvo.bmp',
+  bedMatressTexture: 'models/bed/Texture/dusek.bmp'
 }).then(function (resources) {
   init(resources);
   render(0);
