@@ -1,0 +1,11 @@
+
+Some hints:
+- Multiple light sources should be active at the same time at least once! Keep in mind that a light source in one room will also affect the other rooms (without shadow mapping)!
+- Make sure to combine at least two textures based on a third one in a shader for the multi-texturing part. Different texture coordinates are typically required for the third texture.
+- The particle system has to use a (basic) physics simulation, the animations have to be time based and the the particles must be rendered with an appropriate technique.
+
+Some more details regarding the camera:
+You have to create a 30 second continuous movie with an animated camera (the user has no control over the camera during the whole duration).
+By pressing the 'C'-key the user-controlled camera mode should be enabled. In the user-controlled camera mode the animations are triggered by flying close to the individual scenes (without disabling the user-controlled camera mode!).
+Select at least 3 points (scenes/stages) in your movie where such trigger points make sense and describe them in your final documentation.
+If your 3D world is very large think about a useful way to support the exploration of your scene with the user-controlled camera (and describe the controls in the documentation).
