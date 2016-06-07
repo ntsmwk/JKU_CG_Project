@@ -8,7 +8,6 @@ var quadVertexBuffer, quadColorBuffer;
 var rotateLight;
 let wall = new MaterialSGNode([new RenderSGNode(makeRect())]);
 var cuboid = new MaterialSGNode([new RenderSGNode(makeCuboid())]);
-let lightNode = new LightSGNode();
 var bedLightNode = new LightSGNode();
 var ceilingLightNode = new LightSGNode();
 var bedstead, bedMattress;
@@ -35,7 +34,6 @@ function init(resources) {
   initInteraction(gl.canvas);
   initWall();
   initCuboid();
-  initLight();
   initBedLightNode();
   initCeilingLightNode();
   initBedSteadMaterial(resources);
@@ -58,25 +56,20 @@ function initCuboid(){
   cuboid.shininess = 0.4;
 }
 
-function initLight(){
-  lightNode.ambient = [0.2, 0.2, 0.2, 1];
-  lightNode.diffuse = [0.4, 0.4, 0.4, 1];
-  lightNode.specular = [0.5, 0.5, 0.5, 1];
-  lightNode.position = [0, 0, 0];
+function initCeilingLightNode(){
+  ceilingLightNode.ambient = [0.2, 0.2, 0.2, 1];
+  ceilingLightNode.diffuse = [0.2, 0.2, 0.2, 1];
+  ceilingLightNode.specular = [0.2, 0.2, 0.2, 1];
+  ceilingLightNode.position = [0, 0, 0];
+  ceilingLightNode.uniform = 'u_light';
 }
 
 function initBedLightNode(){
-  bedLightNode.ambient = [0.2, 0.2, 0.2, 1];
-  bedLightNode.diffuse = [0.4, 0.4, 0.4, 1];
-  bedLightNode.specular = [0.2, 0.2, 0.2, 1];
+  bedLightNode.ambient = [0.3, 0.3, 0.3, 1];
+  bedLightNode.diffuse = [0.3, 0.3, 0.3, 1];
+  bedLightNode.specular = [0.3, 0.3, 0.3, 1];
   bedLightNode.position = [0, 0, 0];
-}
-
-function initCeilingLightNode(){
-  ceilingLightNode.ambient = [0.4, 0.4, 0.4, 1];
-  ceilingLightNode.diffuse = [0.4, 0.4, 0.4, 1];
-  ceilingLightNode.specular = [0.4, 0.4, 0.4, 1];
-  ceilingLightNode.position = [0, 0, 0];
+  bedLightNode.uniform = 'u_light2';
 }
 
 function initBedSteadMaterial(resources){
@@ -139,17 +132,25 @@ function createSceneGraph(gl, resources) {
   bedstead = new MaterialSGNode(new RenderSGNode(resources.bedstead));
 
   root.append(new TransformationSGNode(glm.transform({translate:[-2.66,0.001,1], scale: 0.001}),new AdvancedTextureSGNode(resources.ceilingLampTexture, ceilLampMaterial)));
+
+/*
+  var ceilLight = new TransformationSGNode(glm.transform({translate:[-2.66,0.38,1], scale: 0.18}),[
+    createLightSphere(resources), ceilingLightNode
+  ]);
+*/
+
   var ceilLight = new TransformationSGNode(glm.transform({translate:[-2.66,0.38,1], scale: 0.18}),[createLightSphere(resources), ceilingLightNode]);
+
   root.append(ceilLight);
 
   createRooms(resources);
-  //createPathways();
+  createPathways();
   createDesk(resources);
   createBed(resources);
 
   createBedLightNode(resources);
 
-  rotateLight = new TransformationSGNode(mat4.create(),[new TransformationSGNode(glm.translate(-1,0,1),[createLightSphere(resources), lightNode])]);
+  //rotateLight = new TransformationSGNode(mat4.create(),[new TransformationSGNode(glm.translate(-1,0,1),[new ShaderSGNode(createProgram(gl, resources.vs, resources.fs), [new LightSGNode()]), lightNode])]);
   //root.append(rotateLight);
   return root;
 }
@@ -160,10 +161,9 @@ function createBedLightNode(resources){
   root.append(descLight);
 }
 
+
 function createLightSphere(resources) {
-    return new ShaderSGNode(createProgram(gl, resources.vs, resources.fs), [
-      new RenderSGNode(makeSphere(.2,10,10))
-    ]);
+    return new ShaderSGNode(createProgram(gl, resources.vs, resources.fs),[new RenderSGNode(makeSphere(.2,10,10))]);
   }
 
 function createDesk(resources){

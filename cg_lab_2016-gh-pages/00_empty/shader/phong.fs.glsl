@@ -16,6 +16,7 @@ struct Light {
 
 uniform Material u_material;
 uniform Light u_light;
+uniform Light u_light2;
 
 varying vec2 v_texCoord;
 uniform sampler2D u_tex;
@@ -53,6 +54,7 @@ void main() {
 	 vec4 textureColor = texture2D(u_tex,v_texCoord);
 
 	gl_FragColor =
-		calculateSimplePointLight(u_light, u_material, v_lightVec, v_normalVec, v_eyeVec, textureColor);
-
+		calculateSimplePointLight(u_light, u_material, v_lightVec, v_normalVec, v_eyeVec, textureColor)
+		+	calculateSimplePointLight(u_light2, u_material, v_light2Vec, v_normalVec, v_eyeVec, textureColor);
+;
 }
