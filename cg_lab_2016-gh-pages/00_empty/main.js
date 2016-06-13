@@ -1,7 +1,7 @@
 var gl = null;
 var shaderProgram = null;
 var root = null;
-var canvasWidth = 800;
+var canvasWidth = 1200;
 var canvasHeight = 800;
 var aspectRatio = canvasWidth / canvasHeight;
 var quadVertexBuffer, quadColorBuffer;
@@ -13,18 +13,15 @@ var ceilingLightNode = new LightSGNode();
 var bedstead, bedMattress;
 var deskMaterial, chairMaterial;
 var ceilLampMaterial;
-
-const camera = {
-  rotation: {
-    x: 0,
-    y: 0
-  },
-  position:{
-    x:0,
-    y:0,
-    z:0
-  }
-};
+var currentLookAt = [0,0,-1];
+var currentCameraPos = [0,0,0];
+var currentUpVector = [0,1,0];
+var currentCameraRightVector = [1,0,0];
+var worldUpVector = [0,1,0];
+var currentYaw = -90.0;
+var currentPitch = 0.0;
+var currentXRot = 0;
+var currentYRot = 0;
 
 
 function init(resources) {
@@ -111,8 +108,16 @@ function render(timeInMilliseconds) {
 
   const context = createSGContext(gl);
   context.projectionMatrix = mat4.perspective(mat4.create(), 30, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
-  context.viewMatrix = mat4.lookAt(mat4.create(), [0,0,-5], [0,0,0], [0,1,0]);
-  context.sceneMatrix = glm.transform({translate: [camera.position.x,camera.position.y,camera.position.z], rotateX: -camera.rotation.y, rotateY: camera.rotation.x})
+  updateCameraVectors();
+  context.viewMatrix = mat4.lookAt(mat4.create(),
+                          currentCameraPos,
+                          vec3.add(vec3.create(), currentCameraPos,currentLookAt),
+                          currentUpVector);
+
+  context.sceneMatrix = mat4.create();
+
+
+
 
   //rotateLight.matrix = glm.rotateY(timeInMilliseconds*0.05);
   root.render(context);
@@ -133,11 +138,6 @@ function createSceneGraph(gl, resources) {
 
   root.append(new TransformationSGNode(glm.transform({translate:[-2.66,0.001,1], scale: 0.001}),new AdvancedTextureSGNode(resources.ceilingLampTexture, ceilLampMaterial)));
 
-/*
-  var ceilLight = new TransformationSGNode(glm.transform({translate:[-2.66,0.38,1], scale: 0.18}),[
-    createLightSphere(resources), ceilingLightNode
-  ]);
-*/
 
   var ceilLight = new TransformationSGNode(glm.transform({translate:[-2.66,0.38,1], scale: 0.18}),[createLightSphere(resources), ceilingLightNode]);
 
@@ -150,8 +150,6 @@ function createSceneGraph(gl, resources) {
 
   createBedLightNode(resources);
 
-  //rotateLight = new TransformationSGNode(mat4.create(),[new TransformationSGNode(glm.translate(-1,0,1),[new ShaderSGNode(createProgram(gl, resources.vs, resources.fs), [new LightSGNode()]), lightNode])]);
-  //root.append(rotateLight);
   return root;
 }
 
@@ -198,11 +196,11 @@ function createRooms(resources){
 
 function createFirstRoom(firstRoomTransformationNode, firstRoomFloorNode){
   //front
-  //firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}), wall));
+  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}), wall));
   //back
   firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,1,2], rotateX: 0, scale:1}), wall));
   //top
-  //firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), wall));
+  firstRoomTransformationNode.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), wall));
   //bottom
   firstRoomFloorNode.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), wall));
   //right
@@ -302,13 +300,13 @@ function makeCuboid() {
                 1, 1, 1,
                 -1, 1, 1];
   var texture = [0, 1,
-                 0.25, 1,
-                 0.50, 1,
-                 0.75, 1,
+                 1/3, 1,
+                 2/3, 1,
+                 1, 1,
                  0, 0,
-                 0.25, 0,
-                 0.50, 0,
-                 0.75, 0];
+                 1/3, 0,
+                 2/3, 0,
+                 1, 0];
   var index = [0, 1, 2,
                2, 3, 0,
                0, 1, 4,
@@ -347,10 +345,17 @@ function initInteraction(canvas) {
   });
   canvas.addEventListener('mousemove', function(event) {
     const pos = toPos(event);
-    const delta = { x : mouse.pos.x - pos.x, y: mouse.pos.y - pos.y };
+    const delta = { x : mouse.pos.x - pos.x, y: pos.y - mouse.pos.y };
     if (mouse.leftButtonDown) {
-  		camera.rotation.x += delta.x;
-  		camera.rotation.y += delta.y;
+      currentYaw   += delta.x * 0.25;
+      currentPitch += delta.y * 0.25;
+      if(currentPitch > 89.0){
+        pitch = 89.0;
+      }
+      if(currentPitch < -89.0){
+        currentPitch = -89.0;
+      }
+      updateCameraVectors();
     }
     mouse.pos = pos;
   });
@@ -360,26 +365,30 @@ function initInteraction(canvas) {
   });
   //register globally
   document.addEventListener('keypress', function(event) {
-    if (event.code === 'KeyR') {
-      camera.rotation.x = 0;
-  		camera.rotation.y = 0;
-      camera.position.x = 0;
-      camera.position.y = 0;
-      camera.position.z = 0;
+    if (event.code == 'ArrowUp') {
+          var scale = vec3.scale(vec3.create(), currentLookAt , 0.25);
+          vec3.add(currentCameraPos, currentCameraPos, scale);
     }
-    if (event.code === 'KeyW') {
-      camera.position.z += -0.3;
-    }
-    if (event.code === 'KeyS') {
-      camera.position.z += 0.3;
-    }
-    if (event.code === 'KeyA') {
-      camera.position.x += 0.3;
-    }
-    if (event.code === 'KeyD') {
-      camera.position.x += -0.3;
+    if (event.code == 'ArrowDown') {
+        var scale = vec3.scale(vec3.create(), currentLookAt , 0.25);
+        vec3.subtract(currentCameraPos, currentCameraPos, scale);
     }
   });
+}
+
+function deg2rad(degrees) {
+  return degrees * Math.PI / 180;
+}
+
+function updateCameraVectors(){
+  var lookat = vec3.create();
+  lookat[0] = Math.cos(deg2rad(currentYaw)) * Math.cos(deg2rad(currentPitch));
+  lookat[1] = Math.sin(deg2rad(currentPitch));
+  lookat[2] = Math.sin(deg2rad(currentYaw)) * Math.cos(deg2rad(currentPitch));
+  vec3.normalize(currentLookAt, lookat);
+
+  vec3.normalize(currentCameraRightVector, vec3.cross(vec3.create(), currentLookAt, worldUpVector));
+  vec3.normalize(currentUpVector, vec3.cross(vec3.create(), currentCameraRightVector, currentLookAt));
 }
 
 loadResources({
