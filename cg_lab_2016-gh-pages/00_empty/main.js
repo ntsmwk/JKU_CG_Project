@@ -1,28 +1,94 @@
+//Standard Globals
 var gl = null;
 var shaderProgram = null;
 var root = null;
 var canvasWidth = 1200;
 var canvasHeight = 800;
-var aspectRatio = canvasWidth / canvasHeight;
-var quadVertexBuffer, quadColorBuffer;
-var rotateLight;
-let wall = new MaterialSGNode([new RenderSGNode(makeRect())]);
+
+//
+//------------------------------
+//
+
+//Objects
+var wall = new MaterialSGNode([new RenderSGNode(makeRect())]);
+var lamp = new MaterialSGNode([new RenderSGNode(makeLamp())]);
 var cuboid = new MaterialSGNode([new RenderSGNode(makeCuboid())]);
 var bedLightNode = new LightSGNode();
 var ceilingLightNode = new LightSGNode();
-var bedstead, bedMattress;
+var bedsteadMaterial, bedMattressMaterial;
 var deskMaterial, chairMaterial;
 var ceilLampMaterial;
-var currentLookAt = [0,0,-1];
-var currentCameraPos = [0,0,0];
+
+//
+//------------------------------
+//
+
+//Camera Globals
+var currentLookAt = [0,0,0];
+var currentCameraPos = [-2,0,-2];
 var currentUpVector = [0,1,0];
 var currentCameraRightVector = [1,0,0];
 var worldUpVector = [0,1,0];
-var currentYaw = -90.0;
+var currentYaw = 90.0;
 var currentPitch = 0.0;
-var currentXRot = 0;
-var currentYRot = 0;
 
+//
+//------------------------------
+//
+
+//Transformation matrices
+
+////Body Transformation
+var rightArmTransformationMatrix;
+var leftArmTransformationMatrix;
+var rightLegTransformationMatrix;
+var leftLegTransformationMatrix;
+var isFlashlightPickedUp = false;
+var figureTransformationNode;
+
+//
+//------------------------------
+//------------------------------
+//
+
+//Render Section
+
+function render(timeInMilliseconds) {
+  checkForWindowResize(gl);
+  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  gl.clearColor(0.9, 0.9, 0.9, 1.0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  calculateCameraVectors();
+
+  const context = createSGContext(gl);
+  context.projectionMatrix = mat4.perspective(mat4.create(), 30, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
+  context.viewMatrix = mat4.lookAt(mat4.create(), currentCameraPos, vec3.add(vec3.create(), currentCameraPos,currentLookAt), currentUpVector);
+  context.sceneMatrix = mat4.create();
+
+  //Update Transformation matrices
+  renderBody(timeInMilliseconds);
+
+  root.render(context);
+  requestAnimationFrame(render);
+
+}
+
+function renderBody(timeInMilliseconds){
+  if(timeInMilliseconds%2000 < 1000){
+    mat4.multiply(rightArmTransformationMatrix.matrix, rightArmTransformationMatrix.matrix, glm.rotateX(1));
+    mat4.multiply(leftArmTransformationMatrix.matrix, leftArmTransformationMatrix.matrix, glm.rotateX(-1));
+  } else{
+    mat4.multiply(rightArmTransformationMatrix.matrix, rightArmTransformationMatrix.matrix, glm.rotateX(-1));
+    mat4.multiply(leftArmTransformationMatrix.matrix, leftArmTransformationMatrix.matrix, glm.rotateX(1));
+  }
+}
+
+//
+//------------------------------
+//
+
+//Init Section
 
 function init(resources) {
   gl = createContext(canvasWidth , canvasHeight);
@@ -31,6 +97,7 @@ function init(resources) {
   initInteraction(gl.canvas);
   initWall();
   initCuboid();
+  initLamp();
   initBedLightNode();
   initCeilingLightNode();
   initBedSteadMaterial(resources);
@@ -42,8 +109,15 @@ function init(resources) {
 function initWall(){
   wall.ambient = [0, 0, 0, 1];
   wall.diffuse = [0.1, 0.1, 0.1, 1];
-  wall.specular = [0.5, 0.5, 0.5, 1];
+  wall.specular = [0.2, 0.2, 0.2, 1];
   wall.shininess = 0.4;
+}
+
+function initLamp(){
+  lamp.ambient = [0, 0, 0, 1];
+  lamp.diffuse = [0.1, 0.1, 0.1, 1];
+  lamp.specular = [0.5, 0.5, 0.5, 1];
+  lamp.shininess = 0.4;
 }
 
 function initCuboid(){
@@ -70,18 +144,19 @@ function initBedLightNode(){
 }
 
 function initBedSteadMaterial(resources){
-  bedstead.ambient = resources.bedMtl.bedstead.ambient;
-  bedstead.diffuse = resources.bedMtl.bedstead.diffuse;
-  bedstead.specular = resources.bedMtl.bedstead.specular;
-  bedstead.emission = resources.bedMtl.bedstead.emission;
-  bedstead.shininess = resources.bedMtl.bedstead.shininess;
+  bedsteadMaterial.ambient = resources.bedMtl.bedstead.ambient;
+  bedsteadMaterial.diffuse = resources.bedMtl.bedstead.diffuse;
+  bedsteadMaterial.specular = resources.bedMtl.bedstead.specular;
+  bedsteadMaterial.emission = resources.bedMtl.bedstead.emission;
+  bedsteadMaterial.shininess = resources.bedMtl.bedstead.shininess;
 }
+
 function initBedMattressMaterial(resources){
-  bedMattress.ambient = resources.bedMtl.bedMattress.ambient;
-  bedMattress.diffuse = resources.bedMtl.bedMattress.diffuse;
-  bedMattress.specular = resources.bedMtl.bedMattress.specular;
-  bedMattress.emission = resources.bedMtl.bedMattress.emission;
-  bedMattress.shininess = resources.bedMtl.bedMattress.shininess;
+  bedMattressMaterial.ambient = resources.bedMtl.bedMattress.ambient;
+  bedMattressMaterial.diffuse = resources.bedMtl.bedMattress.diffuse;
+  bedMattressMaterial.specular = resources.bedMtl.bedMattress.specular;
+  bedMattressMaterial.emission = resources.bedMtl.bedMattress.emission;
+  bedMattressMaterial.shininess = resources.bedMtl.bedMattress.shininess;
 }
 
 function initDeskMaterial(resources){
@@ -100,31 +175,7 @@ function initCeilingLampMaterial(resources){
   ceilLampMaterial.shininess = resources.ceilingLampMaterial.wire_143224087.shininess;
 }
 
-function render(timeInMilliseconds) {
-  checkForWindowResize(gl);
-  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-  gl.clearColor(0.9, 0.9, 0.9, 1.0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  const context = createSGContext(gl);
-  context.projectionMatrix = mat4.perspective(mat4.create(), 30, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
-  updateCameraVectors();
-  context.viewMatrix = mat4.lookAt(mat4.create(),
-                          currentCameraPos,
-                          vec3.add(vec3.create(), currentCameraPos,currentLookAt),
-                          currentUpVector);
-
-  context.sceneMatrix = mat4.create();
-
-
-
-
-  //rotateLight.matrix = glm.rotateY(timeInMilliseconds*0.05);
-  root.render(context);
-
-  requestAnimationFrame(render);
-}
-
+//SceneGraph Section
 function createSceneGraph(gl, resources) {
 
   root = new ShaderSGNode(createProgram(gl, resources.phong_vs, resources.phong_fs));
@@ -132,36 +183,33 @@ function createSceneGraph(gl, resources) {
   deskMaterial = new MaterialSGNode(new RenderSGNode(resources.table));
   chairMaterial = new MaterialSGNode(new RenderSGNode(resources.chair));
   ceilLampMaterial = new MaterialSGNode(new RenderSGNode(resources.ceilingLamp));
-
-  bedMattress = new MaterialSGNode(new RenderSGNode(resources.bedMattress));
-  bedstead = new MaterialSGNode(new RenderSGNode(resources.bedstead));
-
-  root.append(new TransformationSGNode(glm.transform({translate:[-2.66,0.001,1], scale: 0.001}),new AdvancedTextureSGNode(resources.ceilingLampTexture, ceilLampMaterial)));
-
-
-  var ceilLight = new TransformationSGNode(glm.transform({translate:[-2.66,0.38,1], scale: 0.18}),[createLightSphere(resources), ceilingLightNode]);
-
-  root.append(ceilLight);
-
+  bedMattressMaterial = new MaterialSGNode(new RenderSGNode(resources.bedMattress));
+  bedsteadMaterial = new MaterialSGNode(new RenderSGNode(resources.bedstead));
   createRooms(resources);
   createPathways();
   createDesk(resources);
   createBed(resources);
-
+  createCeilLamp(resources);
+  createBody(resources);
   createBedLightNode(resources);
 
   return root;
 }
 
+function createCeilLamp(resources){
+  root.append(new TransformationSGNode(glm.transform({translate:[-2.66,0.001,1], scale: 0.001}),new AdvancedTextureSGNode(resources.ceilingLampTexture, ceilLampMaterial)));
+  var ceilLight = new TransformationSGNode(glm.transform({translate:[-2.66,0.38,1], scale: 0.18}),[createLightSphere(resources), ceilingLightNode]);
+  root.append(ceilLight);
+}
+
 function createBedLightNode(resources){
-  root.append(new TransformationSGNode(glm.transform({translate:[-3.5,1.78,1.2], rotateX:90, scale: 0.1}),new AdvancedTextureSGNode(resources.sandTexture, cuboid)));
+  root.append(new TransformationSGNode(glm.transform({translate:[-3.5,1.78,1.2], rotateX:90, scale: 0.1}),new AdvancedTextureSGNode(resources.sandTexture, lamp)));
   var descLight = new TransformationSGNode(glm.transform({translate:[-3.5,1.7,1.2], scale: 0.3}),[createLightSphere(resources), bedLightNode]);
   root.append(descLight);
 }
 
-
 function createLightSphere(resources) {
-    return new ShaderSGNode(createProgram(gl, resources.vs, resources.fs),[new RenderSGNode(makeSphere(.2,10,10))]);
+    return new ShaderSGNode(createProgram(gl, resources.light_vs, resources.light_fs),[new RenderSGNode(makeSphere(.2,10,10))]);
   }
 
 function createDesk(resources){
@@ -172,10 +220,33 @@ function createDesk(resources){
 function createBed(resources){
   var bedTransformationNode = new TransformationSGNode(glm.transform({translate: [-2.95,1.71,1.67], scale: 0.003}));
   bedTransformationNode.append(new TransformationSGNode(glm.transform({translate: [0,0,0], rotateX: 180, rotateY: 90, scale: 1}),
-    new AdvancedTextureSGNode(resources.bedsteadTexture, bedstead)));
+    new AdvancedTextureSGNode(resources.bedsteadTexture, bedsteadMaterial)));
   bedTransformationNode.append(new TransformationSGNode(glm.transform({translate: [0,-0.5,0], rotateX: 180, rotateY: 90, scale: 1.001}),
-    new AdvancedTextureSGNode(resources.bedMatressTexture, bedMattress)));
+    new AdvancedTextureSGNode(resources.bedMatressTexture, bedMattressMaterial)));
   root.append(bedTransformationNode);
+}
+
+function createBody(resources){
+  figureTransformationNode = new TransformationSGNode(glm.transform({translate:[-1,0.9,0.3],scale:0.6}), []);
+
+  var texturedBodyPart = new AdvancedTextureSGNode(resources.skinTexture, cuboid);
+  //Arms
+  leftArmTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2,1,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
+  rightArmTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2.5,1,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
+  figureTransformationNode.append(leftArmTransformationMatrix);
+  figureTransformationNode.append(rightArmTransformationMatrix);
+  //Legs
+  leftLegTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2.1,1.6,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
+  rightLegTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2.4,1.6,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
+  figureTransformationNode.append(leftLegTransformationMatrix);
+  figureTransformationNode.append(rightLegTransformationMatrix);
+
+  //Body
+  figureTransformationNode.append(new TransformationSGNode(glm.transform({ translate: [-2.25,1.1,1], rotateY: 00, rotateX: 90, scale: [0.2,0.2,0.15]}), texturedBodyPart));
+
+
+  root.append(figureTransformationNode);
+
 }
 
 function createRooms(resources){
@@ -183,6 +254,7 @@ function createRooms(resources){
   var firstRoomFloorTextureNode = new AdvancedTextureSGNode(resources.woodFloorTexture,[]);
   root.append(new TransformationSGNode(glm.transform({translate: [-2-2/3,0,0], scale: 1}), [firstRoomTextureNode, firstRoomFloorTextureNode]));
   createFirstRoom(firstRoomTextureNode, firstRoomFloorTextureNode);
+
 
   var secondRoomTextureNode = new AdvancedTextureSGNode(resources.tileTexture,[]);
   var secondRoomFloorTextureNode = new AdvancedTextureSGNode(resources.tileFloorTexture,[]);
@@ -192,6 +264,8 @@ function createRooms(resources){
   var thirdRoomTextureNode = new AdvancedTextureSGNode(resources.tableTexture,[]);
   root.append(new TransformationSGNode(glm.transform({translate: [0,0,-2-2/3], scale: 1}), thirdRoomTextureNode));
   createThirdRoom(thirdRoomTextureNode);
+
+
 }
 
 function createFirstRoom(firstRoomTransformationNode, firstRoomFloorNode){
@@ -280,7 +354,7 @@ function createPathway(node){
   node.append(new TransformationSGNode(glm.transform({translate:[0,3,1], rotateX: 90, scale:[1,1,1]}), wall));
   }
 
-function makeCuboid() {
+function makeLamp() {
   width = 1;
   height = 2;
   var position = [-width, -width, -height,
@@ -326,6 +400,60 @@ function makeCuboid() {
   };
 }
 
+function makeCuboid() {
+  width = 1;
+  height = 2;
+  var position = [-width, -width, -height,
+                  width, -width, -height,
+                  width, width, -height,
+                  -width, width, -height,
+                  -width, -width, height,
+                  width, -width, height,
+                  width, width, height,
+                  -width, width, height];
+  var normal = [-1, -1, -1,
+                1, -1, -1,
+                1, 1, -1,
+                -1, 1, -1,
+                -1,-1, 1,
+                1, -1, 1,
+                1, 1, 1,
+                -1, 1, 1];
+  var texture = [0, 1,
+                 1/3, 1,
+                 2/3, 1,
+                 1, 1,
+                 0, 0,
+                 1/3, 0,
+                 2/3, 0,
+                 1, 0];
+  var index = [0, 1, 2,
+               2, 3, 0,
+               0, 1, 4,
+               1,4,5,
+               1,2,5,
+               2,5,6,
+               2,3,6,
+               3,6,7,
+               0,3,4,
+               3,4,7,
+               4,5,6,
+               6,7,4
+             ];
+  return {
+    position: position,
+    normal: normal,
+    texture: texture,
+    index: index
+  };
+}
+
+//
+//------------------------------
+//
+
+//User Interaction Section
+
 function initInteraction(canvas) {
   const mouse = {
     pos: { x : 0, y : 0},
@@ -355,7 +483,7 @@ function initInteraction(canvas) {
       if(currentPitch < -89.0){
         currentPitch = -89.0;
       }
-      updateCameraVectors();
+      calculateCameraVectors();
     }
     mouse.pos = pos;
   });
@@ -376,11 +504,7 @@ function initInteraction(canvas) {
   });
 }
 
-function deg2rad(degrees) {
-  return degrees * Math.PI / 180;
-}
-
-function updateCameraVectors(){
+function calculateCameraVectors(){
   var lookat = vec3.create();
   lookat[0] = Math.cos(deg2rad(currentYaw)) * Math.cos(deg2rad(currentPitch));
   lookat[1] = Math.sin(deg2rad(currentPitch));
@@ -391,9 +515,29 @@ function updateCameraVectors(){
   vec3.normalize(currentUpVector, vec3.cross(vec3.create(), currentCameraRightVector, currentLookAt));
 }
 
+//
+//------------------------------
+//
+
+//Other Section
+
+function deg2rad(degrees) {
+  return degrees * Math.PI / 180;
+}
+
+function rad2deg(rad){
+  return rad/Math.PI * 180
+}
+
+//
+//------------------------------
+//
+
+//Load Resources Section
+
 loadResources({
-  vs: 'shader/empty.vs.glsl',
-  fs: 'shader/empty.fs.glsl',
+  light_vs: 'shader/light.vs.glsl',
+  light_fs: 'shader/light.fs.glsl',
   phong_vs: 'shader/phong.vs.glsl',
   phong_fs: 'shader/phong.fs.glsl',
   table: 'models/table/Table.obj',
@@ -412,7 +556,8 @@ loadResources({
   sandTexture: 'textures/sand/sand.jpg',
   ceilingLamp: 'models/ceilingLamp/3d-model.obj',
   ceilingLampMaterial: 'models/ceilingLamp/3d-model.mtl',
-  ceilingLampTexture: 'models/ceilingLamp/texture/whiteTextile.jpg'
+  ceilingLampTexture: 'models/ceilingLamp/texture/whiteTextile.jpg',
+  skinTexture: 'textures/skin/skinTexture.jpg'
 }).then(function (resources) {
   init(resources);
   render(0);
