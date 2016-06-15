@@ -75,13 +75,22 @@ function render(timeInMilliseconds) {
 }
 
 function renderBody(timeInMilliseconds){
-  if(timeInMilliseconds%2000 < 1000){
-    mat4.multiply(rightArmTransformationMatrix.matrix, rightArmTransformationMatrix.matrix, glm.rotateX(1));
-    mat4.multiply(leftArmTransformationMatrix.matrix, leftArmTransformationMatrix.matrix, glm.rotateX(-1));
-  } else{
-    mat4.multiply(rightArmTransformationMatrix.matrix, rightArmTransformationMatrix.matrix, glm.rotateX(-1));
-    mat4.multiply(leftArmTransformationMatrix.matrix, leftArmTransformationMatrix.matrix, glm.rotateX(1));
+  if(!isFlashlightPickedUp){
+    if(timeInMilliseconds%2000 < 1000){
+      renderArm(rightArmTransformationMatrix.matrix, 1);
+      renderArm(leftArmTransformationMatrix.matrix, -1);
+    } else{
+      renderArm(rightArmTransformationMatrix.matrix, -1);
+      renderArm(leftArmTransformationMatrix.matrix, 1);
+    }
   }
+}
+
+function renderArm(armTransformationMatrix, rotation){
+  var translationArm = mat4.getTranslation(vec3.create(),  armTransformationMatrix);
+  mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.translate(translationArm[0], translationArm[1], translationArm[2]));
+  mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.rotateX(rotation));
+  mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.translate(-translationArm[0], -translationArm[1], -translationArm[2]));
 }
 
 //
@@ -179,12 +188,7 @@ function initCeilingLampMaterial(resources){
 function createSceneGraph(gl, resources) {
 
   root = new ShaderSGNode(createProgram(gl, resources.phong_vs, resources.phong_fs));
-
-  deskMaterial = new MaterialSGNode(new RenderSGNode(resources.table));
-  chairMaterial = new MaterialSGNode(new RenderSGNode(resources.chair));
-  ceilLampMaterial = new MaterialSGNode(new RenderSGNode(resources.ceilingLamp));
-  bedMattressMaterial = new MaterialSGNode(new RenderSGNode(resources.bedMattress));
-  bedsteadMaterial = new MaterialSGNode(new RenderSGNode(resources.bedstead));
+  setMaterials(resources);
   createRooms(resources);
   createPathways();
   createDesk(resources);
@@ -194,6 +198,14 @@ function createSceneGraph(gl, resources) {
   createBedLightNode(resources);
 
   return root;
+}
+
+function setMaterials(resources){
+    deskMaterial = new MaterialSGNode(new RenderSGNode(resources.table));
+    chairMaterial = new MaterialSGNode(new RenderSGNode(resources.chair));
+    ceilLampMaterial = new MaterialSGNode(new RenderSGNode(resources.ceilingLamp));
+    bedMattressMaterial = new MaterialSGNode(new RenderSGNode(resources.bedMattress));
+    bedsteadMaterial = new MaterialSGNode(new RenderSGNode(resources.bedstead));
 }
 
 function createCeilLamp(resources){
@@ -231,8 +243,8 @@ function createBody(resources){
 
   var texturedBodyPart = new AdvancedTextureSGNode(resources.skinTexture, cuboid);
   //Arms
-  leftArmTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2,1,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
-  rightArmTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2.5,1,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
+  leftArmTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2,1.05,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
+  rightArmTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2.5,1.05,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
   figureTransformationNode.append(leftArmTransformationMatrix);
   figureTransformationNode.append(rightArmTransformationMatrix);
   //Legs
