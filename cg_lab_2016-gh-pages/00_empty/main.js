@@ -46,7 +46,7 @@ var numberOfParticles=150;
 
 //Camera Globals
 var currentLookAt = [0,0,0];
-var currentCameraPos = [-2,0,-2];
+var currentCameraPos = [-2,0,0];
 var currentUpVector = [0,1,0];
 var currentCameraRightVector = [1,0,0];
 var worldUpVector = [0,1,0];
@@ -68,11 +68,12 @@ var leftLegTransformationMatrix;
 var isFlashlightPickedUp = false;
 var figureTransformationNode;
 var armRotationX = 90;
-var armRotationY = 0;
+var bodyRotationY = 0;
 
 
 //// Flashlight
 var flashLightTransformationNode;
+var flashLightRotation
 
 //
 //------------------------------
@@ -102,38 +103,54 @@ function render(timeInMilliseconds) {
   context.viewMatrix = mat4.lookAt(mat4.create(), currentCameraPos, vec3.add(vec3.create(), currentCameraPos,currentLookAt), currentUpVector);
   context.sceneMatrix = mat4.create();
 
-  //Update Transformation matrices
+  //Render Objects
   renderBody(timeInMilliseconds);
-
+  renderParticleSystem();
 
   root.render(context);
   requestAnimationFrame(render);
 }
 
 function renderBody(timeInMilliseconds){
-  relativeTimeInMilliseconds = timeInMilliseconds%3000;
-
-
+  relativeTimeInMilliseconds = timeInMilliseconds%12000;
+  if(between(relativeTimeInMilliseconds, 1000,7000)){
+    isFlashlightPickedUp = true;
+  } else {
+    isFlashlightPickedUp = false;
+  }
   var animation = getBetweenAnimation(relativeTimeInMilliseconds);
-  var translation = getAnimationInterpolationTranslation(animation, relativeTimeInMilliseconds);
+  setFigureTranslation(animation, relativeTimeInMilliseconds);
+  setFigureRotation(animation, relativeTimeInMilliseconds);
+  setFlashLightTranslation(animation, relativeTimeInMilliseconds);
+  swingArm(relativeTimeInMilliseconds);
+}
 
+function setFigureTranslation(animation, relativeTimeInMilliseconds){
+  var translation = getFigureAnimationInterpolationTranslation(animation, relativeTimeInMilliseconds);
   figureTransformationNode.matrix[12] = translation[0];
   figureTransformationNode.matrix[13] = translation[1];
   figureTransformationNode.matrix[14] = translation[2];
+}
 
-  var rotation = getAnimationInterpolationRotation(animation, relativeTimeInMilliseconds);
+function setFigureRotation(animation, relativeTimeInMilliseconds){
+  var rotationY = getFigureAnimationInterpolationRotationY(animation, relativeTimeInMilliseconds);
+  mat4.multiply(figureTransformationNode.matrix, figureTransformationNode.matrix, glm.rotateY(rotationY));
+  mat4.multiply(figureTransformationNode.matrix, figureTransformationNode.matrix, glm.rotateY(-bodyRotationY));
+  bodyRotationY = rotationY;
+}
 
-  swingArm(relativeTimeInMilliseconds);
-
-  renderParticleSystem();
-
+function setFlashLightTranslation(animation, relativeTimeInMilliseconds){
+  var translation = getFlashLightAnimationInterpolationTranslation(animation, relativeTimeInMilliseconds);
+  flashLightTransformationNode.matrix[12] = translation[0];
+  flashLightTransformationNode.matrix[13] = translation[1];
+  flashLightTransformationNode.matrix[14] = translation[2];
 }
 
 function swingArm(relativeTimeInMilliseconds){
   if(!isFlashlightPickedUp){
     var time = relativeTimeInMilliseconds%500;
-
     if(relativeTimeInMilliseconds%1000 < 500){
+      resetArmTranslation(time);
       var rotation = getInterpolationRotation(90, 180, time, 0, 500);
       renderArm(rightArmTransformationMatrix.matrix, -rotation, armRotationX);
       renderArm(leftArmTransformationMatrix.matrix, rotation, -armRotationX);
@@ -149,10 +166,20 @@ function swingArm(relativeTimeInMilliseconds){
   }
 }
 
+function resetArmTranslation(time){
+  if(time < 15){
+    leftArmTransformationMatrix.matrix[12] = 0.25;
+    leftArmTransformationMatrix.matrix[13] = 0.05;
+    leftArmTransformationMatrix.matrix[14] = 0;
+
+    rightArmTransformationMatrix.matrix[12] = -0.25;
+    rightArmTransformationMatrix.matrix[13] = 0.05;
+    rightArmTransformationMatrix.matrix[14] = 0;
+  }
+}
+
 function renderArm(armTransformationMatrix, rotation, oldRotation){
-
-
-  var translationArm = mat4.getTranslation(vec3.create(),  armTransformationMatrix);
+  var translationArm = mat4.getTranslation(vec3.create(), armTransformationMatrix);
   mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.translate(translationArm[0]+1, translationArm[1], translationArm[2]+1));
   mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.rotateX(rotation));
   mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.rotateX(oldRotation));
@@ -191,19 +218,54 @@ function init(resources) {
 function initAnimationArray(){
 
   animationArray.push({ start: 0, end: 1000,
-                        translationOld: [-2.4,1.6,1.2], translationNew: [-2.4,1.6,0.7],
-                        rotationOldX:0, rotationX: 0,
-                        rotationOldY: 0, rotationY: 0});
+                        translationFigureOld: [-2.4,1.6,1.0], translationFigureNew: [-2.4,1.6,0.7],
+                        translationFlashLightOld: [-2.5,1.5,0.5], translationFlashLightNew: [-2.5,1.5,0.5],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 0, rotationFigureY: 0});
 
   animationArray.push({ start: 1000, end: 2000,
-                        translationOld: [-2.4,1.6,0.7], translationNew: [-2.4,1.6,0.7],
-                        rotationOldX:0, rotationX: 180,
-                        rotationOldY: 0, rotationY: 0});
+                        translationFigureOld: [-2.4,1.6,0.7], translationFigureNew: [-2.4,1.6,0.7],
+                        translationFlashLightOld: [-2.5,1.5,0.5], translationFlashLightNew: [-2.2,1.7,0.7],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 0, rotationFigureY: 0});
 
   animationArray.push({ start: 2000, end: 3000,
-                        translationOld: [-2.4,1.6,0.7], translationNew: [-2.4,1.6,1.2],
-                        rotationOldX:0, rotationX: 0,
-                        rotationOldY: 0, rotationY: 0});
+                        translationFigureOld: [-2.4,1.6,0.7], translationFigureNew: [-2.4,1.6,1.0],
+                        translationFlashLightOld: [-2.2,1.7,0.7], translationFlashLightNew: [-2.2,1.7,1.0],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 0, rotationFigureY: 0});
+
+  animationArray.push({ start: 3000, end: 4000,
+                        translationFigureOld: [-2.4,1.6,1.0], translationFigureNew: [-2.4,1.6,1.0],
+                        translationFlashLightOld: [-2.2,1.7,1], translationFlashLightNew: [-2.35,1.7,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 0, rotationFigureY: 90});
+
+  animationArray.push({ start: 4000, end: 7000,
+                        translationFigureOld: [-2.4,1.6,1.0], translationFigureNew: [0,1.6,1.0],
+                        translationFlashLightOld: [-2.3,1.7,0.8], translationFlashLightNew: [0,1.7,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 90, rotationFigureY: 90});
+
+  //Let FlashLight drop
+  animationArray.push({ start: 7000, end: 8000,
+                        translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.0],
+                        translationFlashLightOld:[0,1.7,0.8], translationFlashLightNew: [0,2,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 90, rotationFigureY: 90});
+
+
+  animationArray.push({ start: 8000, end: 9000,
+                        translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.0],
+                        translationFlashLightOld:[0,2,0.8], translationFlashLightNew: [0,1.95,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 90, rotationFigureY: 0});
+
+  animationArray.push({ start: 9000, end: 12000,
+                        translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.5],
+                        translationFlashLightOld: [0,2,0.8], translationFlashLightNew: [0,2,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 0, rotationFigureY: 0});
 
 }
 
@@ -327,7 +389,7 @@ function createBedLightNode(resources){
 }
 
 function createFlashLighLightNode(resources){
-  flashLightTransformationNode = new TransformationSGNode(glm.transform({translate:[-2.5,1.5,0.5], scale: 0.02}),[]);
+  flashLightTransformationNode = new TransformationSGNode(glm.transform({translate:[-2.5,1.5,0.5], rotateY:90, scale: 0.02}),[]);
   flashLightTransformationNode.append(new TransformationSGNode(mat4.create(),new AdvancedTextureSGNode(resources.flashLightTexture, cuboid)));
   var flashLight = new TransformationSGNode(glm.transform({translate:[0,0,2]}),[]);
   flashLight.append(new ShaderSGNode(createProgram(gl, resources.light_vs, resources.light_fs),[new RenderSGNode(makeSphere(1,10,10))]));
@@ -648,7 +710,6 @@ function calculateCameraVectors(){
 //------------------------------
 //
 
-
 //Particle System
 
 //init function for the Particle system
@@ -656,7 +717,7 @@ function ParticleSystem (resources){
   //set origin of the Particle Sytem
   this.originX =0;
   this.originY=1;
-  this.originZ=1.5;
+  this.originZ=1.7;
   this.particles = new Array(); //storage for particles
   this.active=true;  // is particle system active
 
@@ -745,9 +806,9 @@ function between(time, lower, upper){
   return (time>=lower && time < upper);
 }
 
-function getAnimationInterpolationTranslation(animation, current){
-  var translationOld = animation.translationOld;
-  var translationNew = animation.translationNew;
+function getFigureAnimationInterpolationTranslation(animation, current){
+  var translationOld = animation.translationFigureOld;
+  var translationNew = animation.translationFigureNew;
   var start = animation.start;
   var end = animation.end;
   var translation = vec3.create();
@@ -758,19 +819,28 @@ function getAnimationInterpolationTranslation(animation, current){
   return translation;
 }
 
-function getAnimationInterpolationRotation(animation, current){
-  var rotationOldX = animation.rotationOldX;
-  var rotationX = animation.rotationX;
-  var rotationOldY = animation.rotationOldY;
-  var rotationY = animation.rotationY;
+function getFigureAnimationInterpolationRotationY(animation, current){
+  var rotationOldY = animation.rotationFigureOldY;
+  var rotationY = animation.rotationFigureY;
   var start = animation.start;
   var end = animation.end;
   var rotation = {};
   var relativePassedTime = (current - start)/(end-start);
-
-  rotation.rotX = rotationOldX + (rotationX - rotationOldX) * relativePassedTime;
-  rotation.rotY = rotationOldY + (rotationY - rotationOldY) * relativePassedTime;
+  rotation = rotationOldY + (rotationY - rotationOldY) * relativePassedTime;
   return rotation;
+}
+
+function getFlashLightAnimationInterpolationTranslation(animation, current){
+  var translationOld = animation.translationFlashLightOld;
+  var translationNew = animation.translationFlashLightNew;
+  var start = animation.start;
+  var end = animation.end;
+  var translation = vec3.create();
+  var relativePassedTime = (current - start)/(end-start);
+  translation[0] = translationOld[0] + (translationNew[0] - translationOld[0]) * relativePassedTime;
+  translation[1] = translationOld[1] + (translationNew[1] - translationOld[1]) * relativePassedTime;
+  translation[2] = translationOld[2] + (translationNew[2] - translationOld[2]) * relativePassedTime;
+  return translation;
 }
 
 function getInterpolationRotation(oldRotation, newRotation, currentTime, start, end){
@@ -778,7 +848,6 @@ function getInterpolationRotation(oldRotation, newRotation, currentTime, start, 
     var rotation = oldRotation + (newRotation - oldRotation) * relativePassedTime;
     return rotation;
 }
-
 
 //
 //------------------------------
