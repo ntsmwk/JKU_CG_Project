@@ -112,17 +112,19 @@ function render(timeInMilliseconds) {
 }
 
 function renderBody(timeInMilliseconds){
-  relativeTimeInMilliseconds = timeInMilliseconds%12000;
-  if(between(relativeTimeInMilliseconds, 1000,7000)){
+  relativeTimeInMilliseconds = timeInMilliseconds%25000;
+  if(between(relativeTimeInMilliseconds, 6000,15000)){
     isFlashlightPickedUp = true;
   } else {
     isFlashlightPickedUp = false;
   }
+
   var animation = getBetweenAnimation(relativeTimeInMilliseconds);
   setFigureTranslation(animation, relativeTimeInMilliseconds);
   setFigureRotation(animation, relativeTimeInMilliseconds);
   setFlashLightTranslation(animation, relativeTimeInMilliseconds);
   swingArm(relativeTimeInMilliseconds);
+
 }
 
 function setFigureTranslation(animation, relativeTimeInMilliseconds){
@@ -216,55 +218,95 @@ function init(resources) {
 }
 
 function initAnimationArray(){
+//[-2.0,1.6,0.3]
 
-  animationArray.push({ start: 0, end: 1000,
+  animationArray.push({ start: 0, end: 2000,
+                        translationFigureOld: [-2.0,1.6,0.3], translationFigureNew: [-2.0,1.6,1.0],
+                        translationFlashLightOld: [-2.5,1.5,0.5], translationFlashLightNew: [-2.5,1.5,0.5],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 0, rotationFigureY: 0});
+
+
+  animationArray.push({ start: 2000, end: 3000,
+                        translationFigureOld: [-2.0,1.6,1.0], translationFigureNew: [-2.0,1.6,1.0],
+                        translationFlashLightOld: [-2.5,1.5,0.5], translationFlashLightNew: [-2.5,1.5,0.5],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 0, rotationFigureY: -90});
+
+  animationArray.push({ start: 3000, end: 4000,
+                        translationFigureOld: [-2.0,1.6,1.0], translationFigureNew: [-2.4,1.6,1.0],
+                        translationFlashLightOld: [-2.5,1.5,0.5], translationFlashLightNew: [-2.5,1.5,0.5],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: -90, rotationFigureY: -90});
+
+  animationArray.push({ start: 4000, end: 5000,
+                        translationFigureOld: [-2.4,1.6,1.0], translationFigureNew: [-2.4,1.6,1.0],
+                        translationFlashLightOld: [-2.5,1.5,0.5], translationFlashLightNew: [-2.5,1.5,0.5],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: -90, rotationFigureY: 0});
+
+
+  animationArray.push({ start: 5000, end: 6000,
                         translationFigureOld: [-2.4,1.6,1.0], translationFigureNew: [-2.4,1.6,0.7],
                         translationFlashLightOld: [-2.5,1.5,0.5], translationFlashLightNew: [-2.5,1.5,0.5],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 0, rotationFigureY: 0});
 
-  animationArray.push({ start: 1000, end: 2000,
+  animationArray.push({ start: 6000, end: 7000,
                         translationFigureOld: [-2.4,1.6,0.7], translationFigureNew: [-2.4,1.6,0.7],
                         translationFlashLightOld: [-2.5,1.5,0.5], translationFlashLightNew: [-2.2,1.7,0.7],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 0, rotationFigureY: 0});
 
-  animationArray.push({ start: 2000, end: 3000,
+  animationArray.push({ start: 7000, end: 8000,
                         translationFigureOld: [-2.4,1.6,0.7], translationFigureNew: [-2.4,1.6,1.0],
                         translationFlashLightOld: [-2.2,1.7,0.7], translationFlashLightNew: [-2.2,1.7,1.0],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 0, rotationFigureY: 0});
 
-  animationArray.push({ start: 3000, end: 4000,
+  animationArray.push({ start: 8000, end: 9000,
                         translationFigureOld: [-2.4,1.6,1.0], translationFigureNew: [-2.4,1.6,1.0],
                         translationFlashLightOld: [-2.2,1.7,1], translationFlashLightNew: [-2.35,1.7,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 0, rotationFigureY: 90});
 
-  animationArray.push({ start: 4000, end: 7000,
+  animationArray.push({ start: 9000, end: 14000,
                         translationFigureOld: [-2.4,1.6,1.0], translationFigureNew: [0,1.6,1.0],
-                        translationFlashLightOld: [-2.3,1.7,0.8], translationFlashLightNew: [0,1.7,0.8],
+                        translationFlashLightOld: [-2.35,1.7,0.8], translationFlashLightNew: [0,1.7,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 90, rotationFigureY: 90});
 
   //Let FlashLight drop
-  animationArray.push({ start: 7000, end: 8000,
+  animationArray.push({ start: 14000, end: 15000,
                         translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.0],
                         translationFlashLightOld:[0,1.7,0.8], translationFlashLightNew: [0,1.98,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 90, rotationFigureY: 90});
 
-  animationArray.push({ start: 8000, end: 9000,
+  animationArray.push({ start: 15000, end: 16000,
                         translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.0],
                         translationFlashLightOld:[0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 90, rotationFigureY: 0});
 
-  animationArray.push({ start: 9000, end: 12000,
-                        translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.5],
+  animationArray.push({ start: 16000, end: 18000,
+                        translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.2],
                         translationFlashLightOld: [0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 0, rotationFigureY: 0});
+
+  animationArray.push({ start: 18000, end: 20000,
+                        translationFigureOld: [0,1.6,1.2], translationFigureNew: [0,1.6,1.2],
+                        translationFlashLightOld:[0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 0, rotationFigureY: 180});
+
+  animationArray.push({ start: 20000, end: 26000,
+                        translationFigureOld: [0,1.6,1.2], translationFigureNew: [0,1.6,-1.6],
+                        translationFlashLightOld:[0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 180, rotationFigureY: 180});
+
 
 }
 
@@ -421,10 +463,10 @@ function createKitchenTable(resources){
 
 }
 
-  function createBath(resources){
-    createBathtub(resources);
-    root.append(new TransformationSGNode(glm.transform({translate: [-0.7,2.0,1.95], rotateX: 180, rotateY: 0, scale: 0.01}), new AdvancedTextureSGNode(resources.sandTexture, sinkMaterial)));
-    root.append(new TransformationSGNode(glm.transform({translate: [0.80,2,0.25], rotateX: 180, rotateY: -90, scale: 0.0005}), new AdvancedTextureSGNode(resources.sandTexture, toiletMaterial)));
+function createBath(resources){
+  createBathtub(resources);
+  root.append(new TransformationSGNode(glm.transform({translate: [-0.7,2.0,1.95], rotateX: 180, rotateY: 0, scale: 0.01}), new AdvancedTextureSGNode(resources.sandTexture, sinkMaterial)));
+  root.append(new TransformationSGNode(glm.transform({translate: [0.80,2,0.25], rotateX: 180, rotateY: -90, scale: 0.0005}), new AdvancedTextureSGNode(resources.sandTexture, toiletMaterial)));
 }
 
 function createBathtub(resources){
@@ -450,7 +492,7 @@ function createBed(resources){
 }
 
 function createBody(resources){
-  figureTransformationNode = new TransformationSGNode(glm.transform({translate:[-2.4,1.6,1.2], rotateY:0, scale:0.6}), []);
+  figureTransformationNode = new TransformationSGNode(glm.transform({translate:[-2.0,1.6,0.3], rotateY:0, scale:0.6}), []);
   var texturedBodyPart = new AdvancedTextureSGNode(resources.skinTexture, cuboid);
 
   //Arms
@@ -774,7 +816,7 @@ ParticleSystem.prototype.transform = function (resources) {
        this.particles[i].life=Math.floor(Math.random()*10);
        //refresh life with a lifespan between 0 and 100
      } else {
-        mat4.multiply(this.particles[i].matrix,this.particles[i].matrix, glm.transform({translate: [0,0.05,0]}));
+        mat4.multiply(this.particles[i].matrix,this.particles[i].matrix, glm.transform({translate: [0,Math.random()/10,0]}));
         //if paricle is alive perform a transformation
      }
     }
