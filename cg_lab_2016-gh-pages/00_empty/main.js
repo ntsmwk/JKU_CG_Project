@@ -33,6 +33,7 @@ var ceilLampMaterial;
 var bedLightNode = new LightSGNode();
 var ceilingLightNode = new LightSGNode();
 var flashLightLightNode = new LightSGNode();
+var kitchenCeilingLightNode = new LightSGNode();
 
 
 
@@ -112,7 +113,7 @@ function render(timeInMilliseconds) {
 }
 
 function renderBody(timeInMilliseconds){
-  relativeTimeInMilliseconds = timeInMilliseconds%25000;
+  relativeTimeInMilliseconds = timeInMilliseconds%30000;
   if(between(relativeTimeInMilliseconds, 6000,15000)){
     isFlashlightPickedUp = true;
   } else {
@@ -218,14 +219,12 @@ function init(resources) {
 }
 
 function initAnimationArray(){
-//[-2.0,1.6,0.3]
 
   animationArray.push({ start: 0, end: 2000,
                         translationFigureOld: [-2.0,1.6,0.3], translationFigureNew: [-2.0,1.6,1.0],
                         translationFlashLightOld: [-2.5,1.5,0.5], translationFlashLightNew: [-2.5,1.5,0.5],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 0, rotationFigureY: 0});
-
 
   animationArray.push({ start: 2000, end: 3000,
                         translationFigureOld: [-2.0,1.6,1.0], translationFigureNew: [-2.0,1.6,1.0],
@@ -289,25 +288,52 @@ function initAnimationArray(){
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 90, rotationFigureY: 0});
 
-  animationArray.push({ start: 16000, end: 18000,
+  animationArray.push({ start: 16000, end: 17000,
                         translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.2],
                         translationFlashLightOld: [0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 0, rotationFigureY: 0});
 
-  animationArray.push({ start: 18000, end: 20000,
+  animationArray.push({ start: 17000, end: 19000,
+                        translationFigureOld: [0,1.6,1.2], translationFigureNew: [0,1.6,1.2],
+                        translationFlashLightOld: [0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 0, rotationFigureY: 0});
+
+  animationArray.push({ start: 19000, end: 20000,
                         translationFigureOld: [0,1.6,1.2], translationFigureNew: [0,1.6,1.2],
                         translationFlashLightOld:[0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 0, rotationFigureY: 180});
 
   animationArray.push({ start: 20000, end: 26000,
-                        translationFigureOld: [0,1.6,1.2], translationFigureNew: [0,1.6,-1.6],
+                        translationFigureOld: [0,1.6,1.2], translationFigureNew: [0,1.6,-1.7],
                         translationFlashLightOld:[0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 180, rotationFigureY: 180});
 
+  animationArray.push({ start: 26000, end: 27000,
+                        translationFigureOld: [0,1.6,-1.7], translationFigureNew: [0,1.6,-1.7],
+                        translationFlashLightOld:[0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 180, rotationFigureY: 90});
 
+  animationArray.push({ start: 27000, end: 28000,
+                        translationFigureOld: [0,1.6,-1.7], translationFigureNew: [0,1.6,-1.7],
+                        translationFlashLightOld:[0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 90, rotationFigureY: 0});
+
+  animationArray.push({ start: 28000, end: 29000,
+                        translationFigureOld: [0,1.6,-1.7], translationFigureNew: [0,1.6,-1.7],
+                        translationFlashLightOld:[0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: 0, rotationFigureY: -90});
+  animationArray.push({ start: 29000, end: 30000,
+                        translationFigureOld: [0,1.6,-1.7], translationFigureNew: [0,1.6,-1.7],
+                        translationFlashLightOld:[0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
+                        rotationFlashLightOldX:0, rotationFlashLightX: 0,
+                        rotationFigureOldY: -90, rotationFigureY: -180});
 }
 
 function initParticleSystem(resources){
@@ -343,6 +369,9 @@ function initCeilingLightNode(){
   ceilingLightNode.uniform = 'u_light';
 }
 
+
+
+
 function initBedLightNode(){
   bedLightNode.ambient = [0.3, 0.3, 0.3, 1];
   bedLightNode.diffuse = [0.3, 0.3, 0.3, 1];
@@ -357,6 +386,14 @@ function initFlashLightLightNode(){
   flashLightLightNode.specular = [0.3, 0.3, 0.3, 1];
   flashLightLightNode.position = [0, 0, 0];
   flashLightLightNode.uniform = 'u_light3';
+}
+
+function initKitchenCeilingLightNode(){
+  kitchenCeilingLightNode.ambient = [0.2, 0.2, 0.2, 1];
+  kitchenCeilingLightNode.diffuse = [0.2, 0.2, 0.2, 1];
+  kitchenCeilingLightNode.specular = [0.2, 0.2, 0.2, 1];
+  kitchenCeilingLightNode.position = [0, 0, 0];
+  kitchenCeilingLightNode.uniform = 'u_light4';
 }
 
 function initBedSteadMaterial(resources){
@@ -400,7 +437,7 @@ function createSceneGraph(gl, resources) {
   createPathways();
   createDesk(resources);
   createBed(resources);
-  createCeilLamp(resources);
+  createBedroomCeilLamp(resources);
   createBody(resources);
   createBedLightNode(resources);
   createFlashLighLightNode(resources);
@@ -422,7 +459,7 @@ function setMaterials(resources){
     frezzerMaterial=new MaterialSGNode(new RenderSGNode(resources.frezzer));
 }
 
-function createCeilLamp(resources){
+function createBedroomCeilLamp(resources){
   root.append(new TransformationSGNode(glm.transform({translate:[-2.66,0.001,1], scale: 0.001}),new AdvancedTextureSGNode(resources.ceilingLampTexture, ceilLampMaterial)));
   var ceilLight = new TransformationSGNode(glm.transform({translate:[-2.66,0.38,1], scale: 0.18}),[createLightSphere(resources), ceilingLightNode]);
   root.append(ceilLight);
@@ -452,6 +489,7 @@ function createKitchen(resources){
   root.append(new TransformationSGNode(glm.transform({translate: [0.9,2,-1.2], rotateX: 180, rotateY: -90, scale: 0.015}), new AdvancedTextureSGNode(resources.sandTexture, frezzerMaterial)));
   root.append(new TransformationSGNode(glm.transform({translate: [-0.3,1.65,-1.7], rotateX: 180, rotateY: 0, scale: [0.04,0.03,0.03]}), new AdvancedTextureSGNode(resources.woodChairTexture, chairMaterial)));
   createKitchenTable(resources);
+  createKitchenCeilLamp(resources);
 }
 
 function createKitchenTable(resources){
@@ -461,6 +499,13 @@ function createKitchenTable(resources){
   root.append(new TransformationSGNode(glm.transform({translate:[-0.9,1.75,-2.4], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1))))); //Plate for Multitexturing
 
+}
+
+
+function createKitchenCeilLamp(resources){
+  root.append(new TransformationSGNode(glm.transform({translate:[0,0.001,-2], scale: 0.001}),new AdvancedTextureSGNode(resources.ceilingLampTexture, ceilLampMaterial)));
+  var ceilLight = new TransformationSGNode(glm.transform({translate:[0,0.38,-2], scale: 0.18}),[createLightSphere(resources), ceilingLightNode]);
+  root.append(ceilLight);
 }
 
 function createBath(resources){
