@@ -301,6 +301,8 @@ function createSceneGraph(gl, resources) {
   createBody(resources);
   createBedLightNode(resources);
   createFlashLighLightNode(resources);
+  createBath(resources);
+  createKitchen(resources);
 
 
   return root;
@@ -312,6 +314,9 @@ function setMaterials(resources){
     ceilLampMaterial = new MaterialSGNode(new RenderSGNode(resources.ceilingLamp));
     bedMattressMaterial = new MaterialSGNode(new RenderSGNode(resources.bedMattress));
     bedsteadMaterial = new MaterialSGNode(new RenderSGNode(resources.bedstead));
+    toiletMaterial=new MaterialSGNode(new RenderSGNode(resources.toilet));
+    sinkMaterial=new MaterialSGNode(new RenderSGNode(resources.sink));
+    frezzerMaterial=new MaterialSGNode(new RenderSGNode(resources.frezzer));
 }
 
 function createCeilLamp(resources){
@@ -338,6 +343,35 @@ function createFlashLighLightNode(resources){
 
 function createLightSphere(resources) {
     return new ShaderSGNode(createProgram(gl, resources.light_vs, resources.light_fs),[new RenderSGNode(makeSphere(.2,10,10))]);
+}
+
+function createKitchen(resources){
+  root.append(new TransformationSGNode(glm.transform({translate: [0.9,2,-1.2], rotateX: 180, rotateY: -90, scale: 0.015}), new AdvancedTextureSGNode(resources.sandTexture, frezzerMaterial)));
+  root.append(new TransformationSGNode(glm.transform({translate: [-0.3,1.65,-1.7], rotateX: 180, rotateY: 0, scale: [0.04,0.03,0.03]}), new AdvancedTextureSGNode(resources.woodChairTexture, chairMaterial)));
+  createKitchenTable(resources);
+}
+
+function createKitchenTable(resources){
+  root.append(new TransformationSGNode(glm.transform({translate:[-0.02,1.75,-2.0], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[-0.9,1.75,-2.0], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[-0.02,1.75,-2.4], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[-0.9,1.75,-2.4], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1))))); //Plate for Multitexturing
+
+}
+
+  function createBath(resources){
+    createBathtub(resources);
+    root.append(new TransformationSGNode(glm.transform({translate: [-0.7,2.0,1.95], rotateX: 180, rotateY: 0, scale: 0.01}), new AdvancedTextureSGNode(resources.sandTexture, sinkMaterial)));
+    root.append(new TransformationSGNode(glm.transform({translate: [0.80,2,0.25], rotateX: 180, rotateY: -90, scale: 0.0005}), new AdvancedTextureSGNode(resources.sandTexture, toiletMaterial)));
+}
+
+function createBathtub(resources){
+  root.append(new TransformationSGNode(glm.transform({translate:[0.99,1.80,1.70], scale:[0.01,0.20,0.15]}),new AdvancedTextureSGNode(resources.sandTexture, new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[-0.3,1.80,1.70], scale:[0.01,0.20,0.15]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[0.35,1.80,1.99], rotateY: -90, scale:[0.01,0.20,0.33]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[0.35,1.80,1.40], rotateY: -90, scale:[0.01,0.20,0.33]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[0.35,2,1.70], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.33]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
 }
 
 function createDesk(resources){
@@ -796,6 +830,10 @@ loadResources({
   table: 'models/table/Table.obj',
   tableMaterial: 'models/table/Table.mtl',
   chair: 'models/chair/chair.obj',
+  toilet:'models/toilet.obj',
+  sink:'models/sink.obj',
+  chair: 'models/chair/chair.obj',
+  frezzer:'models/frezzer.obj',
   tableTexture: 'models/table/texture/Texture-1.jpg',
   tileTexture: 'textures/bathroom/tiles/Tiles.jpg',
   tileFloorTexture: 'textures/bathroom/tiles/Tiles_Floor.jpg',
