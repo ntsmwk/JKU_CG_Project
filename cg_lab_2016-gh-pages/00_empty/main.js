@@ -9,15 +9,36 @@ var canvasHeight = 800;
 //------------------------------
 //
 
-//Objects
+//Objects & Models
+
+////General
 var wall = new MaterialSGNode([new RenderSGNode(makeRect())]);
 var lamp = new MaterialSGNode([new RenderSGNode(makeLamp())]);
 var cuboid = new MaterialSGNode([new RenderSGNode(makeCuboid())]);
+
+////Bed
+var bedsteadMaterial, bedMattressMaterial;
+
+////Desk
+var deskMaterial, chairMaterial;
+
+////Ceiling Lamp
+var ceilLampMaterial;
+
+//
+//------------------------------
+//
+
+//lights
 var bedLightNode = new LightSGNode();
 var ceilingLightNode = new LightSGNode();
-var bedsteadMaterial, bedMattressMaterial;
-var deskMaterial, chairMaterial;
-var ceilLampMaterial;
+var flashLightLightNode = new LightSGNode();
+
+
+
+//Particle system
+var particleSytem;
+var numberOfParticles=150;
 
 //
 //------------------------------
@@ -29,6 +50,7 @@ var currentCameraPos = [-2,0,-2];
 var currentUpVector = [0,1,0];
 var currentCameraRightVector = [1,0,0];
 var worldUpVector = [0,1,0];
+
 var currentYaw = 90.0;
 var currentPitch = 0.0;
 
@@ -45,9 +67,23 @@ var rightLegTransformationMatrix;
 var leftLegTransformationMatrix;
 var isFlashlightPickedUp = false;
 var figureTransformationNode;
+var armRotationX = 90;
+var armRotationY = 0;
+
+
+//// Flashlight
+var flashLightTransformationNode;
 
 //
 //------------------------------
+//
+
+//Animation Array
+var animationArray = [];
+
+//
+//------------------------------
+//
 //------------------------------
 //
 
@@ -69,28 +105,63 @@ function render(timeInMilliseconds) {
   //Update Transformation matrices
   renderBody(timeInMilliseconds);
 
+
   root.render(context);
   requestAnimationFrame(render);
-
 }
 
 function renderBody(timeInMilliseconds){
+  relativeTimeInMilliseconds = timeInMilliseconds%3000;
+
+
+  var animation = getBetweenAnimation(relativeTimeInMilliseconds);
+  var translation = getAnimationInterpolationTranslation(animation, relativeTimeInMilliseconds);
+
+  figureTransformationNode.matrix[12] = translation[0];
+  figureTransformationNode.matrix[13] = translation[1];
+  figureTransformationNode.matrix[14] = translation[2];
+
+  var rotation = getAnimationInterpolationRotation(animation, relativeTimeInMilliseconds);
+
+  swingArm(relativeTimeInMilliseconds);
+
+  renderParticleSystem();
+
+}
+
+function swingArm(relativeTimeInMilliseconds){
   if(!isFlashlightPickedUp){
-    if(timeInMilliseconds%2000 < 1000){
-      renderArm(rightArmTransformationMatrix.matrix, 1);
-      renderArm(leftArmTransformationMatrix.matrix, -1);
-    } else{
-      renderArm(rightArmTransformationMatrix.matrix, -1);
-      renderArm(leftArmTransformationMatrix.matrix, 1);
+    var time = relativeTimeInMilliseconds%500;
+
+    if(relativeTimeInMilliseconds%1000 < 500){
+      var rotation = getInterpolationRotation(90, 180, time, 0, 500);
+      renderArm(rightArmTransformationMatrix.matrix, -rotation, armRotationX);
+      renderArm(leftArmTransformationMatrix.matrix, rotation, -armRotationX);
+      armRotationX = rotation;
     }
+    if(relativeTimeInMilliseconds%1000 >= 500){
+      var rotation = getInterpolationRotation(180, 90, time, 0, 500);
+      renderArm(rightArmTransformationMatrix.matrix, -rotation, armRotationX);
+      renderArm(leftArmTransformationMatrix.matrix, rotation, -armRotationX);
+      armRotationX = rotation;
+    }
+
   }
 }
 
-function renderArm(armTransformationMatrix, rotation){
+function renderArm(armTransformationMatrix, rotation, oldRotation){
+
+
   var translationArm = mat4.getTranslation(vec3.create(),  armTransformationMatrix);
-  mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.translate(translationArm[0], translationArm[1], translationArm[2]));
+  mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.translate(translationArm[0]+1, translationArm[1], translationArm[2]+1));
   mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.rotateX(rotation));
-  mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.translate(-translationArm[0], -translationArm[1], -translationArm[2]));
+  mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.rotateX(oldRotation));
+  mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.translate(-translationArm[0]-1, -translationArm[1], -translationArm[2]-1));
+
+}
+
+function renderParticleSystem(){
+  particleSystem.transform(); //animation of article system if activated
 }
 
 //
@@ -113,12 +184,37 @@ function init(resources) {
   initBedMattressMaterial(resources);
   initDeskMaterial(resources);
   initCeilingLampMaterial(resources);
+  initAnimationArray();
+  initParticleSystem(resources);
+}
+
+function initAnimationArray(){
+
+  animationArray.push({ start: 0, end: 1000,
+                        translationOld: [-2.4,1.6,1.2], translationNew: [-2.4,1.6,0.7],
+                        rotationOldX:0, rotationX: 0,
+                        rotationOldY: 0, rotationY: 0});
+
+  animationArray.push({ start: 1000, end: 2000,
+                        translationOld: [-2.4,1.6,0.7], translationNew: [-2.4,1.6,0.7],
+                        rotationOldX:0, rotationX: 180,
+                        rotationOldY: 0, rotationY: 0});
+
+  animationArray.push({ start: 2000, end: 3000,
+                        translationOld: [-2.4,1.6,0.7], translationNew: [-2.4,1.6,1.2],
+                        rotationOldX:0, rotationX: 0,
+                        rotationOldY: 0, rotationY: 0});
+
+}
+
+function initParticleSystem(resources){
+  particleSystem = new ParticleSystem(resources);
 }
 
 function initWall(){
   wall.ambient = [0, 0, 0, 1];
   wall.diffuse = [0.1, 0.1, 0.1, 1];
-  wall.specular = [0.2, 0.2, 0.2, 1];
+  wall.specular = [0.05, 0.05, 0.05, 1];
   wall.shininess = 0.4;
 }
 
@@ -132,8 +228,8 @@ function initLamp(){
 function initCuboid(){
   cuboid.ambient = [0, 0, 0, 1];
   cuboid.diffuse = [0.1, 0.1, 0.1, 1];
-  cuboid.specular = [0.5, 0.5, 0.5, 1];
-  cuboid.shininess = 0.4;
+  cuboid.specular = [0.9, 0.9, 0.9, 1];
+  cuboid.shininess = 0.9;
 }
 
 function initCeilingLightNode(){
@@ -150,6 +246,14 @@ function initBedLightNode(){
   bedLightNode.specular = [0.3, 0.3, 0.3, 1];
   bedLightNode.position = [0, 0, 0];
   bedLightNode.uniform = 'u_light2';
+}
+
+function initFlashLightLightNode(){
+  flashLightLightNode.ambient = [0.3, 0.3, 0.3, 1];
+  flashLightLightNode.diffuse = [0.3, 0.3, 0.3, 1];
+  flashLightLightNode.specular = [0.3, 0.3, 0.3, 1];
+  flashLightLightNode.position = [0, 0, 0];
+  flashLightLightNode.uniform = 'u_light3';
 }
 
 function initBedSteadMaterial(resources){
@@ -196,6 +300,8 @@ function createSceneGraph(gl, resources) {
   createCeilLamp(resources);
   createBody(resources);
   createBedLightNode(resources);
+  createFlashLighLightNode(resources);
+
 
   return root;
 }
@@ -220,9 +326,19 @@ function createBedLightNode(resources){
   root.append(descLight);
 }
 
+function createFlashLighLightNode(resources){
+  flashLightTransformationNode = new TransformationSGNode(glm.transform({translate:[-2.5,1.5,0.5], scale: 0.02}),[]);
+  flashLightTransformationNode.append(new TransformationSGNode(mat4.create(),new AdvancedTextureSGNode(resources.flashLightTexture, cuboid)));
+  var flashLight = new TransformationSGNode(glm.transform({translate:[0,0,2]}),[]);
+  flashLight.append(new ShaderSGNode(createProgram(gl, resources.light_vs, resources.light_fs),[new RenderSGNode(makeSphere(1,10,10))]));
+  flashLight.append(flashLightLightNode);
+  flashLightTransformationNode.append(flashLight);
+  root.append(flashLightTransformationNode);
+}
+
 function createLightSphere(resources) {
     return new ShaderSGNode(createProgram(gl, resources.light_vs, resources.light_fs),[new RenderSGNode(makeSphere(.2,10,10))]);
-  }
+}
 
 function createDesk(resources){
   root.append(new TransformationSGNode(glm.transform({translate: [-3.1,1.522,0.3], rotateY:90, scale: 0.01}), new AdvancedTextureSGNode(resources.tableTexture, deskMaterial)));
@@ -239,22 +355,23 @@ function createBed(resources){
 }
 
 function createBody(resources){
-  figureTransformationNode = new TransformationSGNode(glm.transform({translate:[-1,0.9,0.3],scale:0.6}), []);
-
+  figureTransformationNode = new TransformationSGNode(glm.transform({translate:[-2.4,1.6,1.2], rotateY:0, scale:0.6}), []);
   var texturedBodyPart = new AdvancedTextureSGNode(resources.skinTexture, cuboid);
+
   //Arms
-  leftArmTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2,1.05,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
-  rightArmTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2.5,1.05,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
+  leftArmTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [0.25,0.05,0], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
+  rightArmTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-0.25,0.05,0], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
   figureTransformationNode.append(leftArmTransformationMatrix);
   figureTransformationNode.append(rightArmTransformationMatrix);
+
   //Legs
-  leftLegTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2.1,1.6,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
-  rightLegTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-2.4,1.6,1], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
+  leftLegTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [0.15,0.5,0], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
+  rightLegTransformationMatrix = new TransformationSGNode(glm.transform({ translate: [-0.15,0.5,0], rotateY: 00, rotateX: 90, scale: [0.05,0.05,0.1]}), texturedBodyPart);
   figureTransformationNode.append(leftLegTransformationMatrix);
   figureTransformationNode.append(rightLegTransformationMatrix);
 
   //Body
-  figureTransformationNode.append(new TransformationSGNode(glm.transform({ translate: [-2.25,1.1,1], rotateY: 00, rotateX: 90, scale: [0.2,0.2,0.15]}), texturedBodyPart));
+  figureTransformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,0,0], rotateY: 00, rotateX: 90, scale: [0.2,0.1,0.15]}), texturedBodyPart));
 
 
   root.append(figureTransformationNode);
@@ -531,6 +648,78 @@ function calculateCameraVectors(){
 //------------------------------
 //
 
+
+//Particle System
+
+//init function for the Particle system
+function ParticleSystem (resources){
+  //set origin of the Particle Sytem
+  this.originX =0;
+  this.originY=1;
+  this.originZ=1.5;
+  this.particles = new Array(); //storage for particles
+  this.active=true;  // is particle system active
+
+  //init all particles and add to the array and append the root
+  for (var i=0;i<numberOfParticles;i++){
+    this.drop = new Particle(resources);
+    this.drop.life=Math.floor(Math.random()*10);  //set a live random between 0 and 100
+    this.particles.push(this.drop); // add particles into the array
+    root.append(this.drop);// append root with the new node
+  }
+}
+
+//function for rendering the Particle System
+ParticleSystem.prototype.transform = function (resources) {
+  if (this.active){ //check if Particle System is active, camera close by
+    for (var i=0; i<numberOfParticles;i++){// for each particle
+     this.particles[i].life=this.particles[i].life-1;   // lower the life by one
+     if (this.particles[i].life<0){ //if particle death
+       this.particles[i].matrix = glm.transform({translate:[this.originX+Math.random()/16, this.originY, this.originZ+Math.random()/16], scale: 1});
+       //refresh matrix at the origin
+       this.particles[i].life=Math.floor(Math.random()*10);
+       //refresh life with a lifespan between 0 and 100
+     } else {
+        mat4.multiply(this.particles[i].matrix,this.particles[i].matrix, glm.transform({translate: [0,0.05,0]}));
+        //if paricle is alive perform a transformation
+     }
+    }
+  }
+};
+
+ //function to enable of the particle System animation
+ParticleSystem.prototype.enable = function () {
+ this.active=true;
+};
+
+//function to disable the particle System animation and reset the particles
+ParticleSystem.prototype.disable = function () {
+ this.active=false;
+ //reset all drop to origin
+ for (var i=0; i<numberOfParticles;i++){
+    this.particles[i].matrix = glm.transform({translate:[this.originX+Math.random()/4, this.originY, this.originZ+Math.random()/4], scale: 1});
+    this.particles[i].life=Math.floor(Math.random()*100);
+ }
+};
+
+//standard contrutor for each particel it has a resource and xyz Coordinates)
+function Particle(resources){
+  this.life=0;// life will be set later
+  //this.matrix = glm.transform({translate:[x,y,z], scale: 1}); //set position of the paricle
+  return new TransformationSGNode(mat4.create(),[createWaterDrop(resources)]); //create the sphere representing the water drop
+
+ //function for creatin the sphere node
+  function createWaterDrop(resources) {
+      return new ShaderSGNode(createProgram(gl, resources.water_vs, resources.water_fs), [
+        new RenderSGNode(makeSphere(0.008,10,10))
+      ]);
+  }
+}
+
+//
+//------------------------------
+//
+
 //Other Section
 
 function deg2rad(degrees) {
@@ -540,6 +729,56 @@ function deg2rad(degrees) {
 function rad2deg(rad){
   return rad/Math.PI * 180
 }
+
+function getBetweenAnimation(currentTime){
+  var arrayLength = animationArray.length;
+  for (var i = 0; i < arrayLength; i++) {
+    var lower = animationArray[i].start;
+    var upper = animationArray[i].end;
+    if(between(currentTime, lower, upper)){
+      return animationArray[i];
+    }
+  }
+}
+
+function between(time, lower, upper){
+  return (time>=lower && time < upper);
+}
+
+function getAnimationInterpolationTranslation(animation, current){
+  var translationOld = animation.translationOld;
+  var translationNew = animation.translationNew;
+  var start = animation.start;
+  var end = animation.end;
+  var translation = vec3.create();
+  var relativePassedTime = (current - start)/(end-start);
+  translation[0] = translationOld[0] + (translationNew[0] - translationOld[0]) * relativePassedTime;
+  translation[1] = translationOld[1] + (translationNew[1] - translationOld[1]) * relativePassedTime;
+  translation[2] = translationOld[2] + (translationNew[2] - translationOld[2]) * relativePassedTime;
+  return translation;
+}
+
+function getAnimationInterpolationRotation(animation, current){
+  var rotationOldX = animation.rotationOldX;
+  var rotationX = animation.rotationX;
+  var rotationOldY = animation.rotationOldY;
+  var rotationY = animation.rotationY;
+  var start = animation.start;
+  var end = animation.end;
+  var rotation = {};
+  var relativePassedTime = (current - start)/(end-start);
+
+  rotation.rotX = rotationOldX + (rotationX - rotationOldX) * relativePassedTime;
+  rotation.rotY = rotationOldY + (rotationY - rotationOldY) * relativePassedTime;
+  return rotation;
+}
+
+function getInterpolationRotation(oldRotation, newRotation, currentTime, start, end){
+    var relativePassedTime = (currentTime - start)/(end-start);
+    var rotation = oldRotation + (newRotation - oldRotation) * relativePassedTime;
+    return rotation;
+}
+
 
 //
 //------------------------------
@@ -552,6 +791,8 @@ loadResources({
   light_fs: 'shader/light.fs.glsl',
   phong_vs: 'shader/phong.vs.glsl',
   phong_fs: 'shader/phong.fs.glsl',
+  water_vs: 'shader/watercolor.vs.glsl',
+  water_fs: 'shader/watercolor.fs.glsl',
   table: 'models/table/Table.obj',
   tableMaterial: 'models/table/Table.mtl',
   chair: 'models/chair/chair.obj',
@@ -569,7 +810,8 @@ loadResources({
   ceilingLamp: 'models/ceilingLamp/3d-model.obj',
   ceilingLampMaterial: 'models/ceilingLamp/3d-model.mtl',
   ceilingLampTexture: 'models/ceilingLamp/texture/whiteTextile.jpg',
-  skinTexture: 'textures/skin/skinTexture.jpg'
+  skinTexture: 'textures/skin/skinTexture.jpg',
+  flashLightTexture: 'textures/flashlight/blue.jpg'
 }).then(function (resources) {
   init(resources);
   render(0);
