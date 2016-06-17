@@ -35,6 +35,11 @@ var ceilingLightNode = new LightSGNode();
 var flashLightLightNode = new LightSGNode();
 
 
+
+//Particle system
+var particleSytem;
+var numberOfParticles=150;
+
 //
 //------------------------------
 //
@@ -103,7 +108,6 @@ function render(timeInMilliseconds) {
 
   root.render(context);
   requestAnimationFrame(render);
-
 }
 
 function renderBody(timeInMilliseconds){
@@ -120,6 +124,8 @@ function renderBody(timeInMilliseconds){
   var rotation = getAnimationInterpolationRotation(animation, relativeTimeInMilliseconds);
 
   swingArm(relativeTimeInMilliseconds);
+
+  renderParticleSystem();
 
 }
 
@@ -154,6 +160,10 @@ function renderArm(armTransformationMatrix, rotation, oldRotation){
 
 }
 
+function renderParticleSystem(){
+  particleSystem.transform(); //animation of article system if activated
+}
+
 //
 //------------------------------
 //
@@ -175,6 +185,7 @@ function init(resources) {
   initDeskMaterial(resources);
   initCeilingLampMaterial(resources);
   initAnimationArray();
+  initParticleSystem(resources);
 }
 
 function initAnimationArray(){
@@ -194,6 +205,10 @@ function initAnimationArray(){
                         rotationOldX:0, rotationX: 0,
                         rotationOldY: 0, rotationY: 0});
 
+}
+
+function initParticleSystem(resources){
+  particleSystem = new ParticleSystem(resources);
 }
 
 function initWall(){
@@ -633,6 +648,78 @@ function calculateCameraVectors(){
 //------------------------------
 //
 
+
+//Particle System
+
+//init function for the Particle system
+function ParticleSystem (resources){
+  //set origin of the Particle Sytem
+  this.originX =0;
+  this.originY=1;
+  this.originZ=1.5;
+  this.particles = new Array(); //storage for particles
+  this.active=true;  // is particle system active
+
+  //init all particles and add to the array and append the root
+  for (var i=0;i<numberOfParticles;i++){
+    this.drop = new Particle(resources);
+    this.drop.life=Math.floor(Math.random()*10);  //set a live random between 0 and 100
+    this.particles.push(this.drop); // add particles into the array
+    root.append(this.drop);// append root with the new node
+  }
+}
+
+//function for rendering the Particle System
+ParticleSystem.prototype.transform = function (resources) {
+  if (this.active){ //check if Particle System is active, camera close by
+    for (var i=0; i<numberOfParticles;i++){// for each particle
+     this.particles[i].life=this.particles[i].life-1;   // lower the life by one
+     if (this.particles[i].life<0){ //if particle death
+       this.particles[i].matrix = glm.transform({translate:[this.originX+Math.random()/16, this.originY, this.originZ+Math.random()/16], scale: 1});
+       //refresh matrix at the origin
+       this.particles[i].life=Math.floor(Math.random()*10);
+       //refresh life with a lifespan between 0 and 100
+     } else {
+        mat4.multiply(this.particles[i].matrix,this.particles[i].matrix, glm.transform({translate: [0,0.05,0]}));
+        //if paricle is alive perform a transformation
+     }
+    }
+  }
+};
+
+ //function to enable of the particle System animation
+ParticleSystem.prototype.enable = function () {
+ this.active=true;
+};
+
+//function to disable the particle System animation and reset the particles
+ParticleSystem.prototype.disable = function () {
+ this.active=false;
+ //reset all drop to origin
+ for (var i=0; i<numberOfParticles;i++){
+    this.particles[i].matrix = glm.transform({translate:[this.originX+Math.random()/4, this.originY, this.originZ+Math.random()/4], scale: 1});
+    this.particles[i].life=Math.floor(Math.random()*100);
+ }
+};
+
+//standard contrutor for each particel it has a resource and xyz Coordinates)
+function Particle(resources){
+  this.life=0;// life will be set later
+  //this.matrix = glm.transform({translate:[x,y,z], scale: 1}); //set position of the paricle
+  return new TransformationSGNode(mat4.create(),[createWaterDrop(resources)]); //create the sphere representing the water drop
+
+ //function for creatin the sphere node
+  function createWaterDrop(resources) {
+      return new ShaderSGNode(createProgram(gl, resources.water_vs, resources.water_fs), [
+        new RenderSGNode(makeSphere(0.008,10,10))
+      ]);
+  }
+}
+
+//
+//------------------------------
+//
+
 //Other Section
 
 function deg2rad(degrees) {
@@ -704,6 +791,8 @@ loadResources({
   light_fs: 'shader/light.fs.glsl',
   phong_vs: 'shader/phong.vs.glsl',
   phong_fs: 'shader/phong.fs.glsl',
+  water_vs: 'shader/watercolor.vs.glsl',
+  water_fs: 'shader/watercolor.fs.glsl',
   table: 'models/table/Table.obj',
   tableMaterial: 'models/table/Table.mtl',
   chair: 'models/chair/chair.obj',
