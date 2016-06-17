@@ -3,7 +3,7 @@ Ka  1.0 1.0 1.0
 Kd  1.0 1.0 1.0
 Ks  0.0 0.0 0.0
 d  1.0
-Ns  2.0
+Ns  10
 illum 2
 #
 newmtl bedMattress
@@ -11,5 +11,5 @@ Ka  1.0 1.0 1.0
 Kd  1.0 1.0 1.0
 Ks  0.0 0.0 0.0
 d  1.0
-Ns  2.0
+Ns  10
 illum 2
