@@ -52,7 +52,7 @@ var currentCameraRightVector = [1,0,0];
 var worldUpVector = [0,1,0];
 
 var currentYaw = 90.0;
-var currentPitch = 0.0;
+var currentPitch = 45.0;
 
 //
 //------------------------------
@@ -250,20 +250,19 @@ function initAnimationArray(){
   //Let FlashLight drop
   animationArray.push({ start: 7000, end: 8000,
                         translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.0],
-                        translationFlashLightOld:[0,1.7,0.8], translationFlashLightNew: [0,2,0.8],
+                        translationFlashLightOld:[0,1.7,0.8], translationFlashLightNew: [0,1.98,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 90, rotationFigureY: 90});
 
-
   animationArray.push({ start: 8000, end: 9000,
                         translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.0],
-                        translationFlashLightOld:[0,2,0.8], translationFlashLightNew: [0,1.95,0.8],
+                        translationFlashLightOld:[0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 90, rotationFigureY: 0});
 
   animationArray.push({ start: 9000, end: 12000,
                         translationFigureOld: [0,1.6,1.0], translationFigureNew: [0,1.6,1.5],
-                        translationFlashLightOld: [0,2,0.8], translationFlashLightNew: [0,2,0.8],
+                        translationFlashLightOld: [0,1.98,0.8], translationFlashLightNew: [0,1.98,0.8],
                         rotationFlashLightOldX:0, rotationFlashLightX: 0,
                         rotationFigureOldY: 0, rotationFigureY: 0});
 
