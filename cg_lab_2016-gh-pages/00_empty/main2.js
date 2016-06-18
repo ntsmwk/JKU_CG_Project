@@ -94,7 +94,8 @@ function render(timeInMilliseconds) {
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
   gl.clearColor(0.9, 0.9, 0.9, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   calculateCameraVectors();
 
   const context = createSGContext(gl);
@@ -150,7 +151,6 @@ function swingArm(relativeTimeInMilliseconds){
 
 function renderArm(armTransformationMatrix, rotation, oldRotation){
 
-
   var translationArm = mat4.getTranslation(vec3.create(),  armTransformationMatrix);
   mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.translate(translationArm[0]+1, translationArm[1], translationArm[2]+1));
   mat4.multiply(armTransformationMatrix, armTransformationMatrix, glm.rotateX(rotation));
@@ -182,6 +182,7 @@ function init(resources) {
   initBedSteadMaterial(resources);
   initBedMattressMaterial(resources);
   initDeskMaterial(resources);
+
   initCeilingLampMaterial(resources);
   initAnimationArray();
   initParticleSystem(resources);
@@ -279,6 +280,7 @@ function initDeskMaterial(resources){
   deskMaterial.shininess = resources.tableMaterial.table.shininess;
 }
 
+
 function initCeilingLampMaterial(resources){
   ceilLampMaterial.ambient = resources.ceilingLampMaterial.wire_143224087.ambient;
   ceilLampMaterial.diffuse = resources.ceilingLampMaterial.wire_143224087.diffuse;
@@ -293,7 +295,7 @@ function createSceneGraph(gl, resources) {
   root = new ShaderSGNode(createProgram(gl, resources.phong_vs, resources.phong_fs));
   setMaterials(resources);
   createRooms(resources);
-  createPathways();
+  createPathways(resources);
   createDesk(resources);
   createBed(resources);
   createCeilLamp(resources);
@@ -315,7 +317,6 @@ function setMaterials(resources){
     bedsteadMaterial = new MaterialSGNode(new RenderSGNode(resources.bedstead));
     toiletMaterial=new MaterialSGNode(new RenderSGNode(resources.toilet));
     sinkMaterial=new MaterialSGNode(new RenderSGNode(resources.sink));
-    frezzerMaterial=new MaterialSGNode(new RenderSGNode(resources.frezzer));
     tabMaterial = new MaterialSGNode(new RenderSGNode(resources.tab));
 }
 
@@ -346,7 +347,7 @@ function createLightSphere(resources) {
 }
 
 function createKitchen(resources){
-  root.append(new TransformationSGNode(glm.transform({translate: [0.9,2,-1.2], rotateX: 180, rotateY: -90, scale: 0.015}), new AdvancedTextureSGNode(resources.sandTexture, frezzerMaterial)));
+  root.append(new TransformationSGNode(glm.transform({translate: [0.9,2,-1.2], rotateX: 180, rotateY: -90, scale: 0.015}), new AdvancedTextureSGNode(resources.keramik, new RenderSGNode(resources.frezzer))));
   root.append(new TransformationSGNode(glm.transform({translate: [-0.3,1.65,-1.7], rotateX: 180, rotateY: 0, scale: [0.04,0.03,0.03]}), new AdvancedTextureSGNode(resources.woodChairTexture, chairMaterial)));
   createKitchenTable(resources);
 }
@@ -356,24 +357,37 @@ function createKitchenTable(resources){
   root.append(new TransformationSGNode(glm.transform({translate:[-0.9,1.75,-2.0], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[-0.02,1.75,-2.4], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[-0.9,1.75,-2.4], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
-  root.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1))))); //Plate for Multitexturing
+  createTableMulti(resources);
+
+}
+
+function createTableMulti(resources){
+   var multiShaderProgramm = createProgram(gl, resources.multi_vs, resources.multi_fs);
+   multiShader=gl.getUniformLocation(multiShaderProgramm, "color");
+   console.log(multiShader);
+  //gl.uniform4fv(multiShader, [0,0,1,1]);
+ root.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), new ShaderSGNode(createProgram(gl, resources.multi_vs, resources.multi_fs),new RenderSGNode(makeCuboid(1,1,1))))); //Plate for Multitexturing
+
+  //root.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), new TextureSGNode(resources,new RenderSGNode(makeCuboid(1,1,1))))); //Plate for Multitexturing
 
 }
 
   function createBath(resources){
     createBathtub(resources);
-    root.append(new TransformationSGNode(glm.transform({translate: [-0.7,2.0,1.95], rotateX: 180, rotateY: 0, scale: 0.01}), new AdvancedTextureSGNode(resources.sandTexture, sinkMaterial)));
-    root.append(new TransformationSGNode(glm.transform({translate: [0.80,2,0.25], rotateX: 180, rotateY: -90, scale: 0.0005}), new AdvancedTextureSGNode(resources.sandTexture, toiletMaterial)));
-    root.append(new TransformationSGNode(glm.transform({translate: [0.89,1.4,1.7], rotateX: 180, rotateY: 0, scale: 0.03}), new AdvancedTextureSGNode(resources.sandTexture, tabMaterial)));
+    root.append(new TransformationSGNode(glm.transform({translate: [-0.7,2.0,1.95], rotateX: 180, rotateY: 0, scale: 0.01}), new AdvancedTextureSGNode(resources.keramik, sinkMaterial)));
+    root.append(new TransformationSGNode(glm.transform({translate: [0.80,2,0.25], rotateX: 180, rotateY: -90, scale: 0.0005}), new AdvancedTextureSGNode(resources.keramik, toiletMaterial)));
+    root.append(new TransformationSGNode(glm.transform({translate: [0.89,1.4,1.7], rotateX: 180, rotateY: 0, scale: 0.03}), new AdvancedTextureSGNode(resources.metal, tabMaterial)));
 
 }
 
 function createBathtub(resources){
   root.append(new TransformationSGNode(glm.transform({translate:[0.99,1.80,1.70], scale:[0.01,0.20,0.15]}),new AdvancedTextureSGNode(resources.sandTexture, new RenderSGNode(makeCuboid(1,1,1)))));
-  root.append(new TransformationSGNode(glm.transform({translate:[-0.3,1.80,1.70], scale:[0.01,0.20,0.15]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[-0.31,1.80,1.70], scale:[0.01,0.20,0.15]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[0.35,1.80,1.99], rotateY: -90, scale:[0.01,0.20,0.33]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[0.35,1.80,1.40], rotateY: -90, scale:[0.01,0.20,0.33]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[0.35,2,1.70], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.33]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[0.35,1.7,1.70], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.33]}), new ShaderSGNode(createProgram(gl, resources.water_vs, resources.water_fs), new RenderSGNode(makeCuboid(1,1,1)))));
+
 }
 
 function createDesk(resources){
@@ -493,30 +507,30 @@ function addDoorSide(side){
   return side;
 }
 
-function createPathways(){
-  createFirstPathway(root,  new TransformationSGNode(glm.transform({translate: [-1-1/3,1,2/3], scale: 1/3}),[]));
-  createSecondPathway(root,  new TransformationSGNode(glm.transform({translate:[-1/3,1,-1/3], rotateY:90, scale: 1/3}),[]));
+function createPathways(resources){
+  createFirstPathway(root,  new TransformationSGNode(glm.transform({translate: [-1-1/3,1,2/3], scale: 1/3}),[]), resources);
+  createSecondPathway(root,  new TransformationSGNode(glm.transform({translate:[-1/3,1,-1/3], rotateY:90, scale: 1/3}),[]), resources);
 }
 
-function createFirstPathway(node, firstPathwayTransformationNode){
-  createPathway(firstPathwayTransformationNode);
+function createFirstPathway(node, firstPathwayTransformationNode, resources){
+  createPathway(firstPathwayTransformationNode, resources);
   node.append(firstPathwayTransformationNode);
 }
 
-function createSecondPathway(node, secondPathwayTransformationNode){
-  createPathway(secondPathwayTransformationNode);
+function createSecondPathway(node, secondPathwayTransformationNode, resources){
+  createPathway(secondPathwayTransformationNode,resources);
   node.append(secondPathwayTransformationNode);
 }
 
-function createPathway(node){
+function createPathway(node, resources){
   //front
-  node.append(new TransformationSGNode(glm.transform({ translate: [0,1.5,0], rotateX: 0, scale: [1,1.5,1]}),wall));
+  node.append(new AdvancedTextureSGNode(resources.tableTexture,[new TransformationSGNode(glm.transform({ translate: [0,1.5,0], rotateX: 0, scale: [1,1.5,1]}),wall)]));
   //back
-  node.append(new TransformationSGNode(glm.transform({translate:[0,1.5,2], rotateX: 0, scale:[1,1.5,1]}), wall));
+  node.append(new AdvancedTextureSGNode(resources.tableTexture, [new TransformationSGNode(glm.transform({translate:[0,1.5,2], rotateX: 0, scale:[1,1.5,1]}), wall)]));
   //top
-  node.append(new TransformationSGNode(glm.transform({translate:[0,-0,1], rotateX: 90, scale:[1,1,1]}), wall));
+  node.append(new AdvancedTextureSGNode(resources.tableTexture, [new TransformationSGNode(glm.transform({translate:[0,-0,1], rotateX: 90, scale:[1,1,1]}), wall)]));
   //bottom
-  node.append(new TransformationSGNode(glm.transform({translate:[0,3,1], rotateX: 90, scale:[1,1,1]}), wall));
+  node.append(new AdvancedTextureSGNode(resources.woodFloorTexture, [new TransformationSGNode(glm.transform({translate:[0,3,1], rotateX: 90, scale:[1,1,1]}), wall)]));
   }
 
 function makeLamp() {
@@ -829,6 +843,8 @@ loadResources({
   phong_fs: 'shader/phong.fs.glsl',
   water_vs: 'shader/watercolor.vs.glsl',
   water_fs: 'shader/watercolor.fs.glsl',
+  multi_vs: 'shader/multi.vs.glsl',
+  multi_fs: 'shader/multi.fs.glsl',
   table: 'models/table/Table.obj',
   tableMaterial: 'models/table/Table.mtl',
   chair: 'models/toilet.obj',
@@ -837,6 +853,8 @@ loadResources({
   tab:'models/tab.obj',
   chair: 'models/chair/chair.obj',
   frezzer:'models/frezzer.obj',
+  keramik:'textures/bathroom/keramik.jpg',
+  metal:'textures/bathroom/tab.jpg',
   tableTexture: 'models/table/texture/Texture-1.jpg',
   tileTexture: 'textures/bathroom/tiles/Tiles.jpg',
   tileFloorTexture: 'textures/bathroom/tiles/Tiles_Floor.jpg',

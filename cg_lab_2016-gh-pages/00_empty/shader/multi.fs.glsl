@@ -1,6 +1,12 @@
+/**
+ * empty basic fragment shader
+ */
 
-varying vec2  texCoords;
-uniform sampler2D tex;
-void main () {
-gl_FragColor  = texture2D(tex, texCoords);
+//need to specify how "precise" float should be
+precision mediump float;
+uniform vec4 color ;
+
+//entry point again
+void main() {
+  gl_FragColor = vec4(0,0,1,0.5);
 }
