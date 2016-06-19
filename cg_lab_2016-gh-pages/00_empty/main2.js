@@ -8,6 +8,9 @@ var canvasHeight = 800;
 //
 //------------------------------
 //
+var multiTexture;
+var multiTexture2;
+var multiTextureBitmap;//bitmap for mutlitexture
 
 //Objects & Models
 
@@ -172,6 +175,7 @@ function renderParticleSystem(){
 function init(resources) {
   gl = createContext(canvasWidth , canvasHeight);
   gl.enable(gl.DEPTH_TEST);
+  initMultitexturing(resources);
   root = createSceneGraph(gl, resources);
   initInteraction(gl.canvas);
   initWall();
@@ -182,11 +186,47 @@ function init(resources) {
   initBedSteadMaterial(resources);
   initBedMattressMaterial(resources);
   initDeskMaterial(resources);
-
   initCeilingLampMaterial(resources);
   initAnimationArray();
   initParticleSystem(resources);
 }
+
+function initMultitexturing(resources){
+ initTextures(resources.bitmap);
+ multiTextureBitmap=multiTexture;
+ initTextures(resources.land);
+multiTexture2=multiTexture;
+ initTextures(resources.woodChairTexture);
+ console.log(multiTexture);
+ console.log(multiTexture2);
+ console.log(multiTextureBitmap);
+}
+
+
+function initTextures(texture)
+{
+  //create texture object
+  multiTexture = gl.createTexture();
+  //select a texture unit
+  gl.activeTexture(gl.TEXTURE0);
+  //bind texture to active texture unit
+  gl.bindTexture(gl.TEXTURE_2D, multiTexture);
+  //set sampling parameters
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  //upload texture data
+  gl.texImage2D(gl.TEXTURE_2D, //texture unit target == texture type
+    0, //level of detail level (default 0)
+    gl.RGBA, //internal format of the data in memory
+    gl.RGBA, //image format (should match internal format)
+    gl.UNSIGNED_BYTE, //image data type
+    texture); //actual image data
+  //clean up/unbind texture
+  gl.bindTexture(gl.TEXTURE_2D, null);
+}
+
 
 function initAnimationArray(){
 
@@ -362,14 +402,15 @@ function createKitchenTable(resources){
 }
 
 function createTableMulti(resources){
-   var multiShaderProgramm = createProgram(gl, resources.multi_vs, resources.multi_fs);
-   multiShader=gl.getUniformLocation(multiShaderProgramm, "color");
-   console.log(multiShader);
-  //gl.uniform4fv(multiShader, [0,0,1,1]);
- root.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), new ShaderSGNode(createProgram(gl, resources.multi_vs, resources.multi_fs),new RenderSGNode(makeCuboid(1,1,1))))); //Plate for Multitexturing
+  console.log(multiTexture);
+  console.log(multiTexture2);
+  console.log(multiTextureBitmap);
+  var node = new ShaderSGNode(createProgram(gl, resources.text_vs, resources.text_fs));
+     let plate = new MaterialSGNode(new TextureSGNode(multiTexture,multiTexture2,multiTextureBitmap, new RenderSGNode(makeCuboid(1,1,1))));
+     node.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), [plate]));
+    root.append(node);
 
-  //root.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), new TextureSGNode(resources,new RenderSGNode(makeCuboid(1,1,1))))); //Plate for Multitexturing
-
+ //root.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), new ShaderSGNode(createProgram(gl, resources.multi_vs, resources.multi_fs),new RenderSGNode(makeCuboid(1,1,1))))); //Plate for Multitexturing
 }
 
   function createBath(resources){
@@ -843,10 +884,12 @@ loadResources({
   phong_fs: 'shader/phong.fs.glsl',
   water_vs: 'shader/watercolor.vs.glsl',
   water_fs: 'shader/watercolor.fs.glsl',
-  multi_vs: 'shader/multi.vs.glsl',
-  multi_fs: 'shader/multi.fs.glsl',
+  text_vs: 'shader/texture.vs.glsl',
+  text_fs: 'shader/texture.fs.glsl',
   table: 'models/table/Table.obj',
   tableMaterial: 'models/table/Table.mtl',
+  bitmap:'textures/multitex/bitmap.jpg',
+  land:'textures/multitex/land.jpg',
   chair: 'models/toilet.obj',
   toilet:'models/toilet.obj',
   sink:'models/sink.obj',
@@ -875,3 +918,34 @@ loadResources({
   init(resources);
   render(0);
 });
+
+
+class TextureSGNode extends SGNode {
+  constructor(texture, texture2, bitmap, children ) {
+      super(children);
+      this.texture = texture;
+      this.texture2 = texture2;
+      this.bitmap=bitmap;
+      this.textureunit = 1;
+      this.textureunit2 = 2;
+      this.textureunit3= 3;
+  }
+
+  render(context)
+  {
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_tex'), this.textureunit);
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_tex2'), this.textureunit2);
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit2);
+    gl.bindTexture(gl.TEXTURE_2D, this.texture2);
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_tex3'), this.textureunit3);//u_tex3 is bitmap
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit3);
+    gl.bindTexture(gl.TEXTURE_2D, this.bitmap);
+    super.render(context);
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit2);
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit3);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  }
+}
