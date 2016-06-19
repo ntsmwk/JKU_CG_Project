@@ -5,10 +5,15 @@ var root = null;
 var canvasWidth = 1200;
 var canvasHeight = 800;
 
+var freeCamera=true;
+
 //
 //------------------------------
 //
-
+// textures used for multiTextureing
+var multiTexture;
+var multiTexture2;
+var multiTextureBitmap;//bitmap for mutlitexture
 //Objects & Models
 
 ////General
@@ -70,8 +75,6 @@ var isFlashlightPickedUp = false;
 var figureTransformationNode;
 var armRotationX = 90;
 var bodyRotationY = 0;
-
-
 //// Flashlight
 var flashLightTransformationNode;
 var flashLightRotation
@@ -96,7 +99,8 @@ function render(timeInMilliseconds) {
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
   gl.clearColor(0.9, 0.9, 0.9, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   calculateCameraVectors();
 
   const context = createSGContext(gl);
@@ -104,13 +108,34 @@ function render(timeInMilliseconds) {
   context.viewMatrix = mat4.lookAt(mat4.create(), currentCameraPos, vec3.add(vec3.create(), currentCameraPos,currentLookAt), currentUpVector);
   context.sceneMatrix = mat4.create();
 
+  if (freeCamera){//select Animation according to room
+    if (currentCameraPos[0]<=-1.5&&currentCameraPos[0]>=-3.7&&currentCameraPos[1]<=2&&currentCameraPos[1]>=0&&currentCameraPos[2]<=2&&currentCameraPos[2]>=0){
+    renderBody(timeInMilliseconds%13000); //0-9000Millisecunden firstroom
+  } else if (currentCameraPos[0]<=1&&currentCameraPos[0]>=-1.5&&currentCameraPos[1]<=2&&currentCameraPos[1]>=0&&currentCameraPos[2]<=2&&currentCameraPos[2]>=-0.5) {
+    renderBody(11000+timeInMilliseconds%13000);
+  } else if (currentCameraPos[0]<=1&&currentCameraPos[0]>=-1&&currentCameraPos[1]<=2&&currentCameraPos[1]>=0&&currentCameraPos[2]<=-0.5&&currentCameraPos[2]>=-2.7) {
+    renderBody(20000+timeInMilliseconds%10000);
+  }
+  //Coordinates for room
+//firstroom  x(-1.5,-3.7) y(0,2) z(2,0)
+//secondroom x(1,-1.5) y(0,2) z(2, -0.5)
+//thirdRoom  x(1,-1) y(0,2) z(-0.5,-2.7)
+  } else {
   //Render Objects
   renderBody(timeInMilliseconds);
-  renderParticleSystem();
+  renderParticleSystem(timeInMilliseconds);
+}
 
   root.render(context);
   requestAnimationFrame(render);
 }
+
+
+function initPoint(resources){
+root.append(new TransformationSGNode(glm.transform({translate:[-1,0,-2.7]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeSphere(0.05,10,10)))));
+
+}
+
 
 function renderBody(timeInMilliseconds){
   relativeTimeInMilliseconds = timeInMilliseconds%30000;
@@ -119,6 +144,8 @@ function renderBody(timeInMilliseconds){
   } else {
     isFlashlightPickedUp = false;
   }
+
+
 
   var animation = getBetweenAnimation(relativeTimeInMilliseconds);
   setFigureTranslation(animation, relativeTimeInMilliseconds);
@@ -190,9 +217,19 @@ function renderArm(armTransformationMatrix, rotation, oldRotation){
 
 }
 
-function renderParticleSystem(){
-  particleSystem.transform(); //animation of article system if activated
-}
+function renderParticleSystem(timeInMilliseconds){
+    relativeTimeInMilliseconds = timeInMilliseconds%30000;
+    if (between(relativeTimeInMilliseconds,16000,21000)){
+      if(!particleSystem.active){
+        particleSystem.enable();
+      }
+      particleSystem.transform(); //animation of article system if activated
+    }else {
+      if(particleSystem.active){
+        particleSystem.disable();
+      }
+    }
+  }
 
 //
 //------------------------------
@@ -203,7 +240,8 @@ function renderParticleSystem(){
 function init(resources) {
   gl = createContext(canvasWidth , canvasHeight);
   gl.enable(gl.DEPTH_TEST);
-  root = createSceneGraph(gl, resources);
+   initMultitexturing(resources);// must be initialized bevor the SceneGraph
+ root = createSceneGraph(gl, resources);
   initInteraction(gl.canvas);
   initWall();
   initCuboid();
@@ -216,7 +254,45 @@ function init(resources) {
   initCeilingLampMaterial(resources);
   initAnimationArray();
   initParticleSystem(resources);
+  initPoint(resources);
+
 }
+
+function initMultitexturing(resources){
+ initTextures(resources.bitmap);
+ multiTextureBitmap=multiTexture;
+ initTextures(resources.land);
+multiTexture2=multiTexture;
+ initTextures(resources.woodChairTexture);
+}
+
+
+function initTextures(texture)
+{
+  //create texture object
+  multiTexture = gl.createTexture();
+  //select a texture unit
+  gl.activeTexture(gl.TEXTURE0);
+  //bind texture to active texture unit
+  gl.bindTexture(gl.TEXTURE_2D, multiTexture);
+  //set sampling parameters
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  //upload texture data
+  gl.texImage2D(gl.TEXTURE_2D, //texture unit target == texture type
+    0, //level of detail level (default 0)
+    gl.RGBA, //internal format of the data in memory
+    gl.RGBA, //image format (should match internal format)
+    gl.UNSIGNED_BYTE, //image data type
+    texture); //actual image data
+  //clean up/unbind texture
+  gl.bindTexture(gl.TEXTURE_2D, null);
+}
+
+
+
 
 function initAnimationArray(){
 
@@ -434,7 +510,7 @@ function createSceneGraph(gl, resources) {
   root = new ShaderSGNode(createProgram(gl, resources.phong_vs, resources.phong_fs));
   setMaterials(resources);
   createRooms(resources);
-  createPathways();
+  createPathways(resources);
   createDesk(resources);
   createBed(resources);
   createBedroomCeilLamp(resources);
@@ -457,6 +533,7 @@ function setMaterials(resources){
     toiletMaterial=new MaterialSGNode(new RenderSGNode(resources.toilet));
     sinkMaterial=new MaterialSGNode(new RenderSGNode(resources.sink));
     frezzerMaterial=new MaterialSGNode(new RenderSGNode(resources.frezzer));
+    tabMaterial = new MaterialSGNode(new RenderSGNode(resources.tab));
 }
 
 function createBedroomCeilLamp(resources){
@@ -486,21 +563,27 @@ function createLightSphere(resources) {
 }
 
 function createKitchen(resources){
-  root.append(new TransformationSGNode(glm.transform({translate: [0.9,2,-1.2], rotateX: 180, rotateY: -90, scale: 0.015}), new AdvancedTextureSGNode(resources.sandTexture, frezzerMaterial)));
+  root.append(new TransformationSGNode(glm.transform({translate: [0.9,2,-1.2], rotateX: 180, rotateY: -90, scale: 0.015}), new AdvancedTextureSGNode(resources.keramik, frezzerMaterial)));
   root.append(new TransformationSGNode(glm.transform({translate: [-0.3,1.65,-1.7], rotateX: 180, rotateY: 0, scale: [0.04,0.03,0.03]}), new AdvancedTextureSGNode(resources.woodChairTexture, chairMaterial)));
   createKitchenTable(resources);
   createKitchenCeilLamp(resources);
-}
+  }
 
-function createKitchenTable(resources){
+  function createKitchenTable(resources){
   root.append(new TransformationSGNode(glm.transform({translate:[-0.02,1.75,-2.0], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[-0.9,1.75,-2.0], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[-0.02,1.75,-2.4], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[-0.9,1.75,-2.4], scale:[0.01,0.25,0.01]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1)))));
-  root.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeCuboid(1,1,1))))); //Plate for Multitexturing
+  createTableMulti(resources);
 
-}
+  }
 
+  function createTableMulti(resources){
+  var node = new ShaderSGNode(createProgram(gl, resources.text_vs, resources.text_fs));
+     let plate = new MaterialSGNode(new TextureSGNode(multiTexture,multiTexture2,multiTextureBitmap, new RenderSGNode(makeCuboid(1,1,1))));
+     node.append(new TransformationSGNode(glm.transform({translate:[-0.5,1.5,-2.2], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.25]}), [plate]));
+    root.append(node);
+  }
 
 function createKitchenCeilLamp(resources){
   root.append(new TransformationSGNode(glm.transform({translate:[0,0.001,-2], scale: 0.001}),new AdvancedTextureSGNode(resources.ceilingLampTexture, ceilLampMaterial)));
@@ -510,17 +593,21 @@ function createKitchenCeilLamp(resources){
 
 function createBath(resources){
   createBathtub(resources);
-  root.append(new TransformationSGNode(glm.transform({translate: [-0.7,2.0,1.95], rotateX: 180, rotateY: 0, scale: 0.01}), new AdvancedTextureSGNode(resources.sandTexture, sinkMaterial)));
-  root.append(new TransformationSGNode(glm.transform({translate: [0.80,2,0.25], rotateX: 180, rotateY: -90, scale: 0.0005}), new AdvancedTextureSGNode(resources.sandTexture, toiletMaterial)));
+  root.append(new TransformationSGNode(glm.transform({translate: [-0.7,2.0,1.95], rotateX: 180, rotateY: 0, scale: 0.01}), new AdvancedTextureSGNode(resources.keramik, sinkMaterial)));
+  root.append(new TransformationSGNode(glm.transform({translate: [0.80,2,0.25], rotateX: 180, rotateY: -90, scale: 0.0005}), new AdvancedTextureSGNode(resources.keramik, toiletMaterial)));
+  root.append(new TransformationSGNode(glm.transform({translate: [0.89,1.4,1.7], rotateX: 180, rotateY: 0, scale: 0.03}), new AdvancedTextureSGNode(resources.metal, tabMaterial)));
 }
 
 function createBathtub(resources){
   root.append(new TransformationSGNode(glm.transform({translate:[0.99,1.80,1.70], scale:[0.01,0.20,0.15]}),new AdvancedTextureSGNode(resources.sandTexture, new RenderSGNode(makeCuboid(1,1,1)))));
-  root.append(new TransformationSGNode(glm.transform({translate:[-0.3,1.80,1.70], scale:[0.01,0.20,0.15]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[-0.31,1.80,1.70], scale:[0.01,0.20,0.15]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[0.35,1.80,1.99], rotateY: -90, scale:[0.01,0.20,0.33]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[0.35,1.80,1.40], rotateY: -90, scale:[0.01,0.20,0.33]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
   root.append(new TransformationSGNode(glm.transform({translate:[0.35,2,1.70], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.33]}), new AdvancedTextureSGNode(resources.sandTexture,new RenderSGNode(makeCuboid(1,1,1)))));
+  root.append(new TransformationSGNode(glm.transform({translate:[0.35,1.7,1.70], rotateY: -90, rotateX: 90, scale:[0.01,0.30,0.33]}), new ShaderSGNode(createProgram(gl, resources.water_vs, resources.water_fs), new RenderSGNode(makeCuboid(1,1,1)))));
+
 }
+
 
 function createDesk(resources){
   root.append(new TransformationSGNode(glm.transform({translate: [-3.1,1.522,0.3], rotateY:90, scale: 0.01}), new AdvancedTextureSGNode(resources.tableTexture, deskMaterial)));
@@ -572,9 +659,11 @@ function createRooms(resources){
   root.append(new TransformationSGNode(glm.transform({translate: [0,0,0], scale: 1}), [secondRoomTextureNode, secondRoomFloorTextureNode]));
   createSecondRoom(secondRoomTextureNode, secondRoomFloorTextureNode);
 
+
   var thirdRoomTextureNode = new AdvancedTextureSGNode(resources.tableTexture,[]);
-  root.append(new TransformationSGNode(glm.transform({translate: [0,0,-2-2/3], scale: 1}), thirdRoomTextureNode));
-  createThirdRoom(thirdRoomTextureNode);
+  var thirdRoomFloorTextureNode = new AdvancedTextureSGNode(resources.woodFloorTexture,[]);
+  root.append(new TransformationSGNode(glm.transform({translate: [0,0,-2-2/3], scale: 1}),[ thirdRoomTextureNode, thirdRoomFloorTextureNode]));
+  createThirdRoom(thirdRoomTextureNode, thirdRoomFloorTextureNode);
 
 
 }
@@ -615,7 +704,7 @@ function createSecondRoom(secondRoomTranformationNode, secondRoomFloorTextureNod
   secondRoomTranformationNode.append(leftWall);
 }
 
-function createThirdRoom(thirdRoomTranformationNode){
+function createThirdRoom(thirdRoomTranformationNode, thirdRoomFloorTextureNode){
   //front
   thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({ translate: [0,1,0], rotateX: 0, scale: 1}),wall));
   //back
@@ -625,7 +714,7 @@ function createThirdRoom(thirdRoomTranformationNode){
   //top
   thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[0,0,1], rotateX: 90, scale:1}), wall));
   //bottom
-  thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), wall));
+  thirdRoomFloorTextureNode.append(new TransformationSGNode(glm.transform({translate:[0,2,1], rotateX: 90, scale:1}), wall));
   //right
   thirdRoomTranformationNode.append(new TransformationSGNode(glm.transform({translate:[1,1,1], rotateY: 90, scale:1}), wall));
   //left
@@ -639,30 +728,30 @@ function addDoorSide(side){
   return side;
 }
 
-function createPathways(){
-  createFirstPathway(root,  new TransformationSGNode(glm.transform({translate: [-1-1/3,1,2/3], scale: 1/3}),[]));
-  createSecondPathway(root,  new TransformationSGNode(glm.transform({translate:[-1/3,1,-1/3], rotateY:90, scale: 1/3}),[]));
+function createPathways(resources){
+  createFirstPathway(root,  new TransformationSGNode(glm.transform({translate: [-1-1/3,1,2/3], scale: 1/3}),[]), resources);
+  createSecondPathway(root,  new TransformationSGNode(glm.transform({translate:[-1/3,1,-1/3], rotateY:90, scale: 1/3}),[]), resources);
 }
 
-function createFirstPathway(node, firstPathwayTransformationNode){
-  createPathway(firstPathwayTransformationNode);
+function createFirstPathway(node, firstPathwayTransformationNode, resources){
+  createPathway(firstPathwayTransformationNode, resources);
   node.append(firstPathwayTransformationNode);
 }
 
-function createSecondPathway(node, secondPathwayTransformationNode){
-  createPathway(secondPathwayTransformationNode);
+function createSecondPathway(node, secondPathwayTransformationNode, resources){
+  createPathway(secondPathwayTransformationNode,resources);
   node.append(secondPathwayTransformationNode);
 }
 
-function createPathway(node){
+function createPathway(node, resources){
   //front
-  node.append(new TransformationSGNode(glm.transform({ translate: [0,1.5,0], rotateX: 0, scale: [1,1.5,1]}),wall));
+  node.append(new AdvancedTextureSGNode(resources.tableTexture,[new TransformationSGNode(glm.transform({ translate: [0,1.5,0], rotateX: 0, scale: [1,1.5,1]}),wall)]));
   //back
-  node.append(new TransformationSGNode(glm.transform({translate:[0,1.5,2], rotateX: 0, scale:[1,1.5,1]}), wall));
+  node.append(new AdvancedTextureSGNode(resources.tableTexture, [new TransformationSGNode(glm.transform({translate:[0,1.5,2], rotateX: 0, scale:[1,1.5,1]}), wall)]));
   //top
-  node.append(new TransformationSGNode(glm.transform({translate:[0,-0,1], rotateX: 90, scale:[1,1,1]}), wall));
+  node.append(new AdvancedTextureSGNode(resources.tableTexture, [new TransformationSGNode(glm.transform({translate:[0,-0,1], rotateX: 90, scale:[1,1,1]}), wall)]));
   //bottom
-  node.append(new TransformationSGNode(glm.transform({translate:[0,3,1], rotateX: 90, scale:[1,1,1]}), wall));
+  node.append(new AdvancedTextureSGNode(resources.woodFloorTexture, [new TransformationSGNode(glm.transform({translate:[0,3,1], rotateX: 90, scale:[1,1,1]}), wall)]));
   }
 
 function makeLamp() {
@@ -835,8 +924,8 @@ function calculateCameraVectors(){
 //init function for the Particle system
 function ParticleSystem (resources){
   //set origin of the Particle Sytem
-  this.originX =0;
-  this.originY=1;
+  this.originX =0.78;
+  this.originY=1.38;
   this.originZ=1.7;
   this.particles = new Array(); //storage for particles
   this.active=true;  // is particle system active
@@ -856,13 +945,13 @@ ParticleSystem.prototype.transform = function (resources) {
     for (var i=0; i<numberOfParticles;i++){// for each particle
      this.particles[i].life=this.particles[i].life-1;   // lower the life by one
      if (this.particles[i].life<0){ //if particle death
-       this.particles[i].matrix = glm.transform({translate:[this.originX+Math.random()/16, this.originY, this.originZ+Math.random()/16], scale: 1});
+       this.particles[i].matrix = glm.transform({translate:[this.originX+Math.random()/100, this.originY, this.originZ+Math.random()/100], scale: 1});
        //refresh matrix at the origin
-       this.particles[i].life=Math.floor(Math.random()*10);
-       //refresh life with a lifespan between 0 and 100
+       this.particles[i].life=Math.floor(Math.random()*100);
+       //refresh life with a lifespan between 0 and 1000
      } else {
-        mat4.multiply(this.particles[i].matrix,this.particles[i].matrix, glm.transform({translate: [0,Math.random()/10,0]}));
-        //if paricle is alive perform a transformation
+       mat4.multiply(this.particles[i].matrix,this.particles[i].matrix, glm.transform({translate: [0,0.004,0]}));
+       //if paricle is alive perform a transformation
      }
     }
   }
@@ -878,8 +967,8 @@ ParticleSystem.prototype.disable = function () {
  this.active=false;
  //reset all drop to origin
  for (var i=0; i<numberOfParticles;i++){
-    this.particles[i].matrix = glm.transform({translate:[this.originX+Math.random()/4, this.originY, this.originZ+Math.random()/4], scale: 1});
-    this.particles[i].life=Math.floor(Math.random()*100);
+   this.particles[i].matrix = glm.transform({translate:[this.originX+Math.random()/100, this.originY, this.originZ+Math.random()/100], scale: 1});
+   this.particles[i].life=Math.floor(Math.random()*100);
  }
 };
 
@@ -982,6 +1071,10 @@ loadResources({
   phong_fs: 'shader/phong.fs.glsl',
   water_vs: 'shader/watercolor.vs.glsl',
   water_fs: 'shader/watercolor.fs.glsl',
+  text_vs: 'shader/texture.vs.glsl',
+  text_fs: 'shader/texture.fs.glsl',
+  bitmap:'textures/multitex/bitmap.jpg',
+  land:'textures/multitex/land.jpg',
   table: 'models/table/Table.obj',
   tableMaterial: 'models/table/Table.mtl',
   chair: 'models/chair/chair.obj',
@@ -989,6 +1082,9 @@ loadResources({
   sink:'models/sink.obj',
   chair: 'models/chair/chair.obj',
   frezzer:'models/frezzer.obj',
+  tab:'models/tab.obj',
+  keramik:'textures/bathroom/keramik.jpg',
+  metal:'textures/bathroom/tab.jpg',
   tableTexture: 'models/table/texture/Texture-1.jpg',
   tileTexture: 'textures/bathroom/tiles/Tiles.jpg',
   tileFloorTexture: 'textures/bathroom/tiles/Tiles_Floor.jpg',
@@ -1009,3 +1105,33 @@ loadResources({
   init(resources);
   render(0);
 });
+
+class TextureSGNode extends SGNode {
+  constructor(texture, texture2, bitmap, children ) {
+      super(children);
+      this.texture = texture;
+      this.texture2 = texture2;
+      this.bitmap=bitmap;
+      this.textureunit = 1;
+      this.textureunit2 = 2;
+      this.textureunit3= 3;
+  }
+
+  render(context)
+  {
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_tex'), this.textureunit);
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_tex2'), this.textureunit2);
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit2);
+    gl.bindTexture(gl.TEXTURE_2D, this.texture2);
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_tex3'), this.textureunit3);//u_tex3 is bitmap
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit3);
+    gl.bindTexture(gl.TEXTURE_2D, this.bitmap);
+    super.render(context);
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit2);
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit3);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  }
+}
