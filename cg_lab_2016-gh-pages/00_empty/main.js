@@ -35,7 +35,7 @@ var ceilLampMaterial;
 //
 
 //lights
-var bedLightNode = new LightSGNode();
+var bedLightNode;
 var ceilingLightNode = new LightSGNode();
 var flashLightLightNode = new LightSGNode();
 var kitchenCeilingLightNode = new LightSGNode();
@@ -106,6 +106,7 @@ function render(timeInMilliseconds) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   if (freeCamera){//select Animation according to room
+
       if (currentCameraPos[0]<=-1.5&&currentCameraPos[0]>=-3.7&&currentCameraPos[1]<=2&&currentCameraPos[1]>=0&&currentCameraPos[2]<=2&&currentCameraPos[2]>=0){
         renderBody(timeInMilliseconds%13000); //0-9000Millisecunden firstroom
       } else if (currentCameraPos[0]<=1&&currentCameraPos[0]>=-1.5&&currentCameraPos[1]<=2&&currentCameraPos[1]>=0&&currentCameraPos[2]<=2&&currentCameraPos[2]>=-0.5) {
@@ -265,12 +266,14 @@ function setCameraYaw(camera, relativeTimeInMilliseconds){
 function init(resources) {
   gl = createContext(canvasWidth , canvasHeight);
   gl.enable(gl.DEPTH_TEST);
-   initMultitexturing(resources);// must be initialized bevor the SceneGraph
- root = createSceneGraph(gl, resources);
+  initMultitexturing(resources);// must be initialized bevor the SceneGraph
+  root = createSceneGraph(gl, resources);
   initInteraction(gl.canvas);
   initWall();
   initCuboid();
   initLamp();
+  initFlashLightLightNode();
+  initKitchenCeilingLightNode();
   initBedLightNode();
   initCeilingLightNode();
   initBedSteadMaterial(resources);
@@ -281,7 +284,6 @@ function init(resources) {
   initCameraFlightArray();
   initParticleSystem(resources);
   initPoint(resources);
-
 }
 
 function initMultitexturing(resources){
@@ -291,7 +293,6 @@ function initMultitexturing(resources){
  multiTexture2=multiTexture;
  initTextures(resources.woodChairTexture);
 }
-
 
 function initTextures(texture) {
   //create texture object
@@ -483,7 +484,6 @@ function initCameraFlightArray(){
                             yawOld: 130, yawNew: 130});
 }
 
-
 function initPoint(resources){
   root.append(new TransformationSGNode(glm.transform({translate:[-1,0,-2.7]}), new AdvancedTextureSGNode(resources.woodChairTexture,new RenderSGNode(makeSphere(0.05,10,10)))));
 }
@@ -493,16 +493,16 @@ function initParticleSystem(resources){
 }
 
 function initWall(){
-  wall.ambient = [0, 0, 0, 1];
-  wall.diffuse = [0.1, 0.1, 0.1, 1];
-  wall.specular = [0.05, 0.05, 0.05, 1];
-  wall.shininess = 0.4;
+  wall.ambient = [0.9, 0.9, 0.9, 1];
+  wall.diffuse = [0.9, 0.9, 0.9, 1];
+  wall.specular = [0.9, 0.9, 0.9, 1];
+  wall.shininess = 5;
 }
 
 function initLamp(){
   lamp.ambient = [0, 0, 0, 1];
-  lamp.diffuse = [0.1, 0.1, 0.1, 1];
-  lamp.specular = [0.5, 0.5, 0.5, 1];
+  lamp.diffuse = [0.9, 0.9, 0.9, 1];
+  lamp.specular = [0.9, 0.9, 0.9, 1];
   lamp.shininess = 0.4;
 }
 
@@ -510,37 +510,37 @@ function initCuboid(){
   cuboid.ambient = [0, 0, 0, 1];
   cuboid.diffuse = [0.1, 0.1, 0.1, 1];
   cuboid.specular = [0.9, 0.9, 0.9, 1];
-  cuboid.shininess = 0.9;
+  cuboid.shininess = 5;
 }
 
 function initCeilingLightNode(){
-  ceilingLightNode.ambient = [0.2, 0.2, 0.2, 1];
-  ceilingLightNode.diffuse = [0.2, 0.2, 0.2, 1];
-  ceilingLightNode.specular = [0.2, 0.2, 0.2, 1];
+  ceilingLightNode.ambient = [0.1, 0.1, 0.1, 1];
+  ceilingLightNode.diffuse = [0.1, 0.1, 0.1, 1];
+  ceilingLightNode.specular = [0.1, 0.1, 0.1, 1];
   ceilingLightNode.position = [0, 0, 0];
   ceilingLightNode.uniform = 'u_light';
 }
 
 function initBedLightNode(){
-  bedLightNode.ambient = [0.3, 0.3, 0.3, 1];
-  bedLightNode.diffuse = [0.3, 0.3, 0.3, 1];
-  bedLightNode.specular = [0.3, 0.3, 0.3, 1];
+  //SpotLight
+  bedLightNode.ambient = [0.9, 0.9, 0.9, 1];
+  bedLightNode.diffuse = [0.9, 0.9, 0.9, 1];
+  bedLightNode.specular = [0.9, 0.9, 0.9, 1];
   bedLightNode.position = [0, 0, 0];
-  bedLightNode.uniform = 'u_light2';
 }
 
 function initFlashLightLightNode(){
-  flashLightLightNode.ambient = [0.3, 0.3, 0.3, 1];
-  flashLightLightNode.diffuse = [0.3, 0.3, 0.3, 1];
-  flashLightLightNode.specular = [0.3, 0.3, 0.3, 1];
+  flashLightLightNode.ambient = [0.2, 0.2, 0.2, 1];
+  flashLightLightNode.diffuse = [0.2, 0.2, 0.2, 1];
+  flashLightLightNode.specular = [0.2, 0.2, 0.2, 1];
   flashLightLightNode.position = [0, 0, 0];
   flashLightLightNode.uniform = 'u_light3';
 }
 
 function initKitchenCeilingLightNode(){
-  kitchenCeilingLightNode.ambient = [0.2, 0.2, 0.2, 1];
-  kitchenCeilingLightNode.diffuse = [0.2, 0.2, 0.2, 1];
-  kitchenCeilingLightNode.specular = [0.2, 0.2, 0.2, 1];
+  kitchenCeilingLightNode.ambient = [0.1, 0.1, 0.1, 1];
+  kitchenCeilingLightNode.diffuse = [0.1, 0.1, 0.1, 1];
+  kitchenCeilingLightNode.specular = [0.1, 0.1, 0.1, 1];
   kitchenCeilingLightNode.position = [0, 0, 0];
   kitchenCeilingLightNode.uniform = 'u_light4';
 }
@@ -592,8 +592,6 @@ function createSceneGraph(gl, resources) {
   createFlashLighLightNode(resources);
   createBath(resources);
   createKitchen(resources);
-
-
   return root;
 }
 
@@ -616,23 +614,34 @@ function createBedroomCeilLamp(resources){
 }
 
 function createBedLightNode(resources){
+  bedLightNode = new SpotLightSGNode(vec3.create(), [], [0,-1,1], 30.0);
   root.append(new TransformationSGNode(glm.transform({translate:[-3.5,1.78,1.2], rotateX:90, scale: 0.1}),new AdvancedTextureSGNode(resources.sandTexture, lamp)));
   var descLight = new TransformationSGNode(glm.transform({translate:[-3.5,1.7,1.2], scale: 0.3}),[createLightSphere(resources), bedLightNode]);
   root.append(descLight);
 }
 
 function createFlashLighLightNode(resources){
+
+
   flashLightTransformationNode = new TransformationSGNode(glm.transform({translate:[-2.5,1.5,0.5], rotateY:90, scale: 0.02}),[]);
   flashLightTransformationNode.append(new TransformationSGNode(mat4.create(),new AdvancedTextureSGNode(resources.flashLightTexture, cuboid)));
-  var flashLight = new TransformationSGNode(glm.transform({translate:[0,0,2]}),[]);
-  flashLight.append(new ShaderSGNode(createProgram(gl, resources.light_vs, resources.light_fs),[new RenderSGNode(makeSphere(1,10,10))]));
-  flashLight.append(flashLightLightNode);
+  var flashLight = new TransformationSGNode(glm.transform({translate:[0,0,2]}),[createFlashLightSphere(resources), flashLightLightNode]);
+  //flashLight.append(new ShaderSGNode(createProgram(gl, resources.light_vs, resources.light_fs),[new RenderSGNode(makeSphere(1,10,10))]));
+  //flashLight.append(flashLightLightNode);
   flashLightTransformationNode.append(flashLight);
   root.append(flashLightTransformationNode);
+
+
+
+
 }
 
 function createLightSphere(resources) {
     return new ShaderSGNode(createProgram(gl, resources.light_vs, resources.light_fs),[new RenderSGNode(makeSphere(.2,10,10))]);
+}
+
+function createFlashLightSphere(resources) {
+    return new ShaderSGNode(createProgram(gl, resources.light_vs, resources.light_fs),[new RenderSGNode(makeSphere(1,10,10))]);
 }
 
 function createKitchen(resources){
@@ -660,7 +669,7 @@ function createKitchen(resources){
 
 function createKitchenCeilLamp(resources){
   root.append(new TransformationSGNode(glm.transform({translate:[0,0.001,-2], scale: 0.001}),new AdvancedTextureSGNode(resources.ceilingLampTexture, ceilLampMaterial)));
-  var ceilLight = new TransformationSGNode(glm.transform({translate:[0,0.38,-2], scale: 0.18}),[createLightSphere(resources), ceilingLightNode]);
+  var ceilLight = new TransformationSGNode(glm.transform({translate:[0,0.38,-2], scale: 0.18}),[createLightSphere(resources), kitchenCeilingLightNode]);
   root.append(ceilLight);
 }
 
@@ -973,7 +982,6 @@ function initInteraction(canvas) {
   });
 
   document.addEventListener('keyup', function(event) {
-    console.log(event.code);
     if (event.code == 'Tab') {
       freeCamera=!freeCamera;
     }
@@ -1242,5 +1250,70 @@ class TextureSGNode extends SGNode {
     gl.activeTexture(gl.TEXTURE0 + this.textureunit2);
     gl.activeTexture(gl.TEXTURE0 + this.textureunit3);
     gl.bindTexture(gl.TEXTURE_2D, null);
+  }
+}
+
+class SpotLightSGNode extends LightSGNode{
+
+  constructor(position, children, coneDirection, coneAngle) {
+    super(position, children);
+    this.position = position || [0, 0, 0];
+    this.ambient = [0, 0, 0, 1];
+    this.diffuse = [1, 1, 1, 1];
+    this.specular = [1, 1, 1, 1];
+    this.coneAngle = coneAngle;
+    this.coneDirection = coneDirection;
+    this.uniform = 'u_spotLight';
+  }
+
+
+
+  setLightUniforms(context) {
+    const gl = context.gl;
+    //no materials in use
+    if (!context.shader || !isValidUniformLocation(gl.getUniformLocation(context.shader, this.uniform+'.ambient'))) {
+      return;
+    }
+    gl.uniform4fv(gl.getUniformLocation(context.shader, this.uniform+'.ambient'), this.ambient);
+    gl.uniform4fv(gl.getUniformLocation(context.shader, this.uniform+'.diffuse'), this.diffuse);
+    gl.uniform4fv(gl.getUniformLocation(context.shader, this.uniform+'.specular'), this.specular);
+    gl.uniform1f(gl.getUniformLocation(context.shader, this.uniform+'.coneAngle'), this.coneAngle);
+    gl.uniform3fv(gl.getUniformLocation(context.shader, this.uniform+'.coneDirection'), this.coneDirection);
+  }
+
+  setLightPosition(context) {
+    const gl = context.gl;
+    if (!context.shader || !isValidUniformLocation(gl.getUniformLocation(context.shader, this.uniform+'Pos'))) {
+      return;
+    }
+    const position = this._worldPosition || this.position;
+    gl.uniform3f(gl.getUniformLocation(context.shader, this.uniform+'Pos'), position[0], position[1], position[2]);
+  }
+
+  computeLightPosition(context) {
+    //transform with the current model view matrix
+    const modelViewMatrix = mat4.multiply(mat4.create(), context.viewMatrix, context.sceneMatrix);
+    const original = this.position;
+    const position =  vec4.transformMat4(vec4.create(), vec4.fromValues(original[0], original[1],original[2], 1), modelViewMatrix);
+
+    this._worldPosition = position;
+  }
+
+  /**
+   * set the light uniforms without updating the last light position
+   */
+  setLight(context) {
+    this.setLightPosition(context);
+    this.setLightUniforms(context);
+  }
+
+  render(context) {
+    this.computeLightPosition(context);
+    this.setLight(context);
+
+    //since this a transformation node update the matrix according to my position
+    this.matrix = glm.translate(this.position[0], this.position[1], this.position[2]);
+    //render children
+    super.render(context);
   }
 }
