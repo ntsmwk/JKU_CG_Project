@@ -901,6 +901,14 @@ function initInteraction(canvas) {
         var scale = vec3.scale(vec3.create(), currentLookAt , 0.25);
         vec3.subtract(currentCameraPos, currentCameraPos, scale);
     }
+
+  });
+  
+  document.addEventListener('keyup', function(event) {
+    console.log(event.code);
+    if (event.code == 'Tab') {
+      freeCamera=!freeCamera;
+    }
   });
 }
 

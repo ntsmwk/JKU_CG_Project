@@ -1,0 +1,3 @@
+Tab = change between free and animated Camera flight
+up= moving forward
+down = moving backwards 
