@@ -52,8 +52,10 @@ var currentUpVector = [0,1,0];
 var currentCameraRightVector = [1,0,0];
 var worldUpVector = [0,1,0];
 
-var currentYaw = 90.0;
 var currentPitch = 45.0;
+var currentYaw = 90.0;
+
+var cameraFlightArray = [];
 
 //
 //------------------------------
@@ -68,8 +70,8 @@ var rightLegTransformationMatrix;
 var leftLegTransformationMatrix;
 var isFlashlightPickedUp = false;
 var figureTransformationNode;
-var armRotationX = 90;
-var bodyRotationY = 0;
+var armRotationPitch = 90;
+var bodyRotationYaw = 0;
 
 
 //// Flashlight
@@ -92,12 +94,18 @@ var animationArray = [];
 //Render Section
 
 function render(timeInMilliseconds) {
+  var relativeTimeInMilliseconds = timeInMilliseconds%2000;
   checkForWindowResize(gl);
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
   gl.clearColor(0.9, 0.9, 0.9, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+  var b1 = currentPitch;
+  renderCameraFlight(relativeTimeInMilliseconds);
+  var b2 = currentPitch;
   calculateCameraVectors();
+  var b3 = currentPitch;
+  var aaa= 0;
 
   const context = createSGContext(gl);
   context.projectionMatrix = mat4.perspective(mat4.create(), 30, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
@@ -105,15 +113,14 @@ function render(timeInMilliseconds) {
   context.sceneMatrix = mat4.create();
 
   //Render Objects
-  renderBody(timeInMilliseconds);
+  renderBody(relativeTimeInMilliseconds);
   renderParticleSystem();
 
   root.render(context);
   requestAnimationFrame(render);
 }
 
-function renderBody(timeInMilliseconds){
-  relativeTimeInMilliseconds = timeInMilliseconds%30000;
+function renderBody(relativeTimeInMilliseconds){
   if(between(relativeTimeInMilliseconds, 6000,15000)){
     isFlashlightPickedUp = true;
   } else {
@@ -136,10 +143,10 @@ function setFigureTranslation(animation, relativeTimeInMilliseconds){
 }
 
 function setFigureRotation(animation, relativeTimeInMilliseconds){
-  var rotationY = getFigureAnimationInterpolationRotationY(animation, relativeTimeInMilliseconds);
-  mat4.multiply(figureTransformationNode.matrix, figureTransformationNode.matrix, glm.rotateY(rotationY));
-  mat4.multiply(figureTransformationNode.matrix, figureTransformationNode.matrix, glm.rotateY(-bodyRotationY));
-  bodyRotationY = rotationY;
+  var rotation = getFigureAnimationInterpolationRotationY(animation, relativeTimeInMilliseconds);
+  mat4.multiply(figureTransformationNode.matrix, figureTransformationNode.matrix, glm.rotateY(rotation));
+  mat4.multiply(figureTransformationNode.matrix, figureTransformationNode.matrix, glm.rotateY(-bodyRotationYaw));
+  bodyRotationYaw = rotation;
 }
 
 function setFlashLightTranslation(animation, relativeTimeInMilliseconds){
@@ -155,15 +162,15 @@ function swingArm(relativeTimeInMilliseconds){
     if(relativeTimeInMilliseconds%1000 < 500){
       resetArmTranslation(time);
       var rotation = getInterpolationRotation(90, 180, time, 0, 500);
-      renderArm(rightArmTransformationMatrix.matrix, -rotation, armRotationX);
-      renderArm(leftArmTransformationMatrix.matrix, rotation, -armRotationX);
-      armRotationX = rotation;
+      renderArm(rightArmTransformationMatrix.matrix, -rotation, armRotationPitch);
+      renderArm(leftArmTransformationMatrix.matrix, rotation, -armRotationPitch);
+      armRotationPitch = rotation;
     }
     if(relativeTimeInMilliseconds%1000 >= 500){
       var rotation = getInterpolationRotation(180, 90, time, 0, 500);
-      renderArm(rightArmTransformationMatrix.matrix, -rotation, armRotationX);
-      renderArm(leftArmTransformationMatrix.matrix, rotation, -armRotationX);
-      armRotationX = rotation;
+      renderArm(rightArmTransformationMatrix.matrix, -rotation, armRotationPitch);
+      renderArm(leftArmTransformationMatrix.matrix, rotation, -armRotationPitch);
+      armRotationPitch = rotation;
     }
 
   }
@@ -194,6 +201,30 @@ function renderParticleSystem(){
   particleSystem.transform(); //animation of article system if activated
 }
 
+function renderCameraFlight(relativeTimeInMilliseconds){
+  var camera = getBetweenCamera(relativeTimeInMilliseconds);
+  setCameraPosTranslation(camera, relativeTimeInMilliseconds);
+  setCameraPitch(camera, relativeTimeInMilliseconds);
+  setCameraYaw(camera, relativeTimeInMilliseconds);
+}
+
+function setCameraPosTranslation(camera, relativeTimeInMilliseconds){
+  var translation = getInterpolationCameraPos(camera, relativeTimeInMilliseconds);
+  currentCameraPos[0] = translation[0];
+  currentCameraPos[1] = translation[1];
+  currentCameraPos[2] = translation[2];
+}
+
+function setCameraPitch(camera, relativeTimeInMilliseconds){
+  var rotation = getInterpolatedPitch(camera, relativeTimeInMilliseconds);
+  currentPitch = rotation;
+}
+
+function setCameraYaw(camera, relativeTimeInMilliseconds){
+  var rotation = getInterpolatedYaw(camera, relativeTimeInMilliseconds);
+  currentYaw = rotation;
+}
+
 //
 //------------------------------
 //
@@ -215,6 +246,7 @@ function init(resources) {
   initDeskMaterial(resources);
   initCeilingLampMaterial(resources);
   initAnimationArray();
+  initCameraFlightArray();
   initParticleSystem(resources);
 }
 
@@ -336,6 +368,14 @@ function initAnimationArray(){
                         rotationFigureOldY: -90, rotationFigureY: -180});
 }
 
+function initCameraFlightArray(){
+  cameraFlightArray.push({ start: 0, end: 2000,
+                          //  lookAtOld: [0,0,0], lookAtNew: [0,0,0],
+                            cameraPosOld: [-2,0,0], cameraPosNew: [-2,0,0],
+                            pitchOld: 45, pitchNew: 60,
+                            yawOld: 90, yawNew: 90});
+}
+
 function initParticleSystem(resources){
   particleSystem = new ParticleSystem(resources);
 }
@@ -368,9 +408,6 @@ function initCeilingLightNode(){
   ceilingLightNode.position = [0, 0, 0];
   ceilingLightNode.uniform = 'u_light';
 }
-
-
-
 
 function initBedLightNode(){
   bedLightNode.ambient = [0.3, 0.3, 0.3, 1];
@@ -922,6 +959,17 @@ function getBetweenAnimation(currentTime){
   }
 }
 
+function getBetweenCamera(currentTime){
+  var arrayLength = cameraFlightArray.length;
+  for (var i = 0; i < arrayLength; i++) {
+    var lower = cameraFlightArray[i].start;
+    var upper = cameraFlightArray[i].end;
+    if(between(currentTime, lower, upper)){
+      return cameraFlightArray[i];
+    }
+  }
+}
+
 function between(time, lower, upper){
   return (time>=lower && time < upper);
 }
@@ -929,10 +977,8 @@ function between(time, lower, upper){
 function getFigureAnimationInterpolationTranslation(animation, current){
   var translationOld = animation.translationFigureOld;
   var translationNew = animation.translationFigureNew;
-  var start = animation.start;
-  var end = animation.end;
+  var relativePassedTime = (current - animation.start)/(animation.end-animation.start);
   var translation = vec3.create();
-  var relativePassedTime = (current - start)/(end-start);
   translation[0] = translationOld[0] + (translationNew[0] - translationOld[0]) * relativePassedTime;
   translation[1] = translationOld[1] + (translationNew[1] - translationOld[1]) * relativePassedTime;
   translation[2] = translationOld[2] + (translationNew[2] - translationOld[2]) * relativePassedTime;
@@ -940,27 +986,51 @@ function getFigureAnimationInterpolationTranslation(animation, current){
 }
 
 function getFigureAnimationInterpolationRotationY(animation, current){
-  var rotationOldY = animation.rotationFigureOldY;
-  var rotationY = animation.rotationFigureY;
-  var start = animation.start;
-  var end = animation.end;
-  var rotation = {};
-  var relativePassedTime = (current - start)/(end-start);
-  rotation = rotationOldY + (rotationY - rotationOldY) * relativePassedTime;
-  return rotation;
+  var relativePassedTime = (current - animation.start)/(animation.end-animation.start);
+  return animation.rotationFigureOldY + (animation.rotationFigureY - animation.rotationFigureOldY) * relativePassedTime;
 }
 
 function getFlashLightAnimationInterpolationTranslation(animation, current){
   var translationOld = animation.translationFlashLightOld;
   var translationNew = animation.translationFlashLightNew;
-  var start = animation.start;
-  var end = animation.end;
   var translation = vec3.create();
-  var relativePassedTime = (current - start)/(end-start);
+  var relativePassedTime = (current - animation.start)/(animation.end-animation.start);
   translation[0] = translationOld[0] + (translationNew[0] - translationOld[0]) * relativePassedTime;
   translation[1] = translationOld[1] + (translationNew[1] - translationOld[1]) * relativePassedTime;
   translation[2] = translationOld[2] + (translationNew[2] - translationOld[2]) * relativePassedTime;
   return translation;
+}
+
+function getInterpolationLookAt(camera, current){
+  var translationOld = camera.lookAtOld;
+  var translationNew = camera.lookAtNew;
+  var relativePassedTime = (current - camera.start)/(camera.end-camera.start);
+  var translation = vec3.create();
+  translation[0] = translationOld[0] + (translationNew[0] - translationOld[0]) * relativePassedTime;
+  translation[1] = translationOld[1] + (translationNew[1] - translationOld[1]) * relativePassedTime;
+  translation[2] = translationOld[2] + (translationNew[2] - translationOld[2]) * relativePassedTime;
+  return translation;
+}
+
+function getInterpolationCameraPos(camera, current){
+  var translationOld = camera.cameraPosOld;
+  var translationNew = camera.cameraPosNew;
+  var relativePassedTime = (current - camera.start)/(camera.end-camera.start);
+  var translation = vec3.create();
+  translation[0] = translationOld[0] + (translationNew[0] - translationOld[0]) * relativePassedTime;
+  translation[1] = translationOld[1] + (translationNew[1] - translationOld[1]) * relativePassedTime;
+  translation[2] = translationOld[2] + (translationNew[2] - translationOld[2]) * relativePassedTime;
+  return translation;
+}
+
+function getInterpolatedPitch(camera, current){
+  var relativePassedTime = (current - camera.start)/(camera.end-camera.start);
+  return camera.pitchOld + (camera.pitchNew - camera.pitchOld) * relativePassedTime;
+}
+
+function getInterpolatedYaw(camera, current){
+    var relativePassedTime = (current - camera.start)/(camera.end-camera.start);
+    return camera.yawOld + (camera.yawOld - camera.yawOld) * relativePassedTime;
 }
 
 function getInterpolationRotation(oldRotation, newRotation, currentTime, start, end){
